@@ -427,7 +427,7 @@ function stageCfg(n){
   return{kind:"stage",n,colors:n<=1?1:n<=4?2:n<=8?3:n<=14?4:5,stones:n<5?0:Math.min(2+Math.floor((n-5)*.4),6),
     goalLines:Math.min(2+Math.floor((n-1)*.4),20),goalPure:n<2?0:Math.min(1+Math.floor((n-2)/8),2),hard:Math.min(.5,Math.max(0,(n-6)/40)),bias:Math.max(.3,.9-n*.04)}}
 function dailyCfg(d){const rg=mulberry(hash("cfg|"+d));
-  return{kind:"daily",colors:5,stones:0,size:10,design:designKeyFor(d),goalLines:10+Math.floor(rg()*3),goalPure:2,hard:1,bias:.3}}
+  return{kind:"daily",colors:5,stones:0,size:10,design:designKeyFor(d),goalLines:10+Math.floor(rg()*3),goalPure:1,hard:.7,bias:.35}}
 function prefillBoard(b,cfg,seed){const rg=mulberry(hash(seed));let n=cfg.stones,guard=0;
   const rowC=Array(N).fill(0),colC=Array(N).fill(0);
   while(n>0&&guard++<600){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]!==null||rowC[r]>=3||colC[c]>=3)continue;

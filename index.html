@@ -206,7 +206,8 @@ function musicStart(){if(!opt.music||MU.on)return;const a=actx();if(!a)return;
   MU.on=true;MU.next=a.currentTime+.1;MU.step=0;MU.master.gain.cancelScheduledValues(a.currentTime);MU.master.gain.setValueAtTime(MU.master.gain.value,a.currentTime);MU.master.gain.linearRampToValueAtTime(.8,a.currentTime+2.5);
   clearInterval(MU.timer);MU.timer=setInterval(musicTick,200);musicTick()}
 function musicStop(){if(!MU.on)return;MU.on=false;clearInterval(MU.timer);if(AC&&MU.master){MU.master.gain.cancelScheduledValues(AC.currentTime);MU.master.gain.setValueAtTime(MU.master.gain.value,AC.currentTime);MU.master.gain.linearRampToValueAtTime(0,AC.currentTime+.8)}}
-document.addEventListener("pointerdown",()=>{if(opt.music&&!MU.on)musicStart()},{passive:true});
+function unlockAudio(){const a=actx();if(a&&a.state!=="running")a.resume();if(opt.music&&!MU.on)musicStart()}
+["pointerup","touchend","click","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));
 document.addEventListener("visibilitychange",()=>{if(!AC)return;if(document.hidden){AC.suspend()}else{AC.resume()}});
 function tone(f,d,type="sine",v=.15,f2=null,delay=0){const a=audio();if(!a)return;const t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();
   o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);

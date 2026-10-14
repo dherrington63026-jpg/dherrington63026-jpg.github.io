@@ -87,6 +87,7 @@
   <div class="row">
     <button class="chip" id="tSound">Sound: on</button>
     <button class="chip" id="tMusic">Music: on</button>
+    <button class="chip" id="tMStyle">Music style: auto</button>
     <button class="chip" id="tVibe">Vibrate: on</button>
     <button class="chip off" id="tCB">Color-blind symbols: off</button>
   </div>
@@ -210,7 +211,7 @@ const cv=$("c"),ctx=cv.getContext("2d");
 let W=0,H=0,DPR=1,VS=1,OX=0,OY=0;
 let state="menu"; // menu | play | over
 let G=null;
-const opt={sound:store("hz_sound")!=="0",music:store("hz_music")!=="0",vibe:store("hz_vibe")!=="0",cb:store("hz_cb")==="1"};
+const opt={sound:store("hz_sound")!=="0",music:store("hz_music")!=="0",vibe:store("hz_vibe")!=="0",mstyle:store("hz_mstyle")||"auto",cb:store("hz_cb")==="1"};
 const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 const canVibe=()=>!!navigator.vibrate||isIOS;
 function normVib(a){return Array.isArray(a)?a.map((d,i)=>i%2===0?Math.max(22,d):d):Math.max(22,a)}
@@ -231,7 +232,7 @@ let AC=null;
 function actx(){if(!AC){try{if(navigator.audioSession)navigator.audioSession.type="playback";AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return null}}if(AC.state==="suspended")AC.resume();return AC}
 function audio(){if(!opt.sound)return null;return actx()}
 /* ---- ambient music: soft pads, a warm bass and sparkly plucks, all generated live ---- */
-const MU={on:false,master:null,pad:null,timer:null,next:0,step:0,vol:.42};
+const MU={on:false,master:null,pad:null,timer:null,next:0,step:0,vol:.52};
 function duck(hold){if(!MU.on||!MU.master||!AC)return;const g=MU.master.gain,t=AC.currentTime,low=MU.vol*.22;g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(low,t+.04);g.setValueAtTime(low,t+Math.max(.15,hold));g.linearRampToValueAtTime(MU.vol,t+Math.max(.15,hold)+.9)}
 const mf=m=>440*Math.pow(2,(m-69)/12);
 const CHORDS=[[45,57,60,64],[41,53,57,60],[48,55,60,64],[43,55,59,62]];
@@ -242,15 +243,59 @@ function dangerNow(){if(typeof G==="undefined"||!G||state!=="play"||G.over)retur
   for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(G.board[r][c]!==null){f++;if(r<top)top=r}
   const sf=G.startFill||0;if(sf>0){return clamp(((f-sf)/(N*N-sf)-.3)/.45,0,1)}const fill=f/(N*N),tall=(N-top)/N;return clamp(Math.max((fill-.4)/.4,(tall-.55)/.35),0,1)}
 MU.danger=0;
-function musicTick(){if(!MU.on||!AC)return;MU.danger+=(dangerNow()-MU.danger)*.4;
-  while(MU.next<AC.currentTime+.9){const dg=MU.danger,spb=.42-.17*dg,t=MU.next,st=MU.step%32,ch=CHORDS[Math.floor(st/8)];
-    if(st%8===0){ch.forEach((m,i)=>{mnote(t,mf(m+12),3.4,"sine",.07,MU.pad,.9);mnote(t,mf(m+24)*1.002,3.4,"triangle",.03,MU.pad,1.1)});
-      mnote(t,mf(ch[0]),3.0,"sine",.12,MU.master,.05);mnote(t,mf(ch[0]+12),3.0,"triangle",.05,MU.master,.05);
-      if(dg>.45)mnote(t,mf(ch[0]+30),spb*7,"triangle",.05*dg,MU.pad,.3)}
-    if(st%2===0&&Math.random()<.85){const m=ch[(st/2|0)%4]+24;mnote(t,mf(m),.7,"triangle",.07,MU.echo,.01);mnote(t,mf(m+12),.5,"sine",.025,MU.echo,.01)}
-    if(Math.random()<.5+.4*dg){const m=PENT[Math.floor(Math.random()*PENT.length)];mnote(t+(Math.random()<.5?0:spb/2),mf(m),1.2,"triangle",.07,MU.echo,.005);mnote(t,mf(m+12),.8,"sine",.02,MU.echo,.005)}
-    if(dg>.3)mnote(t,mf(79),.1,"triangle",.07*dg,MU.master,.003);
-    if(dg>.6&&st%2===1)mnote(t,mf(86),.08,"square",.025*dg,MU.master,.002);
+/* ---- original music: four styles, each a looping song with drums, bass, chords and melody ---- */
+MU.style="bounce";
+const MSTYLES=["auto","bounce","dream","chill","arcade"];
+const MBPM={bounce:112,dream:78,chill:86,arcade:138};
+function desiredStyle(){if(opt.mstyle!=="auto")return opt.mstyle;if(state!=="play"||typeof G==="undefined"||!G)return"dream";return G.mstyle||"bounce"}
+let LASTSTYLE="";function pickStyle(){const pool=["bounce","dream","chill","arcade"].filter(x=>x!==LASTSTYLE);LASTSTYLE=pool[Math.floor(Math.random()*pool.length)];return LASTSTYLE}
+function mn(t,m,d,type,v,dest,att){mnote(t,mf(m),d,type,v,dest||MU.master,att===undefined?.006:att)}
+function mnoise(t,d,freq,q,v,type){const a=AC;if(!MU.nbuf){const len=a.sampleRate,buf=a.createBuffer(1,len,a.sampleRate),ch=buf.getChannelData(0);for(let i=0;i<len;i++)ch[i]=Math.random()*2-1;MU.nbuf=buf}
+  const src=a.createBufferSource();src.buffer=MU.nbuf;const f=a.createBiquadFilter();f.type=type||"bandpass";f.frequency.value=freq;f.Q.value=q;const g=a.createGain();
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);src.connect(f).connect(g).connect(MU.master);src.start(t,Math.random()*.5,d+.05)}
+function mkick(t,v){const a=AC,o=a.createOscillator(),g=a.createGain();o.type="sine";o.frequency.setValueAtTime(170,t);o.frequency.exponentialRampToValueAtTime(52,t+.1);
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+.22);o.connect(g).connect(MU.master);o.start(t);o.stop(t+.25);mn(t,100,.03,"triangle",v*.5,MU.master,.001)}
+function msnare(t,v){mnoise(t,.15,2000,.7,v);mn(t,57,.1,"triangle",v*.45,MU.master,.001)}
+function mhat(t,v,open){mnoise(t,open?.14:.04,8000,1,v,"highpass")}
+// Bounce: bright, catchy, bouncy (C major pentatonic)
+const B_CH=[[60,64,67],[55,59,62],[57,60,64],[53,57,60]],B_ROOT=[48,55,57,53];
+const B_MEL=[[76,0,79,0,81,0,79,0,76,0,74,0,72,0,0,0],[74,0,76,0,79,0,76,0,74,0,72,0,74,0,0,0],[76,0,79,0,81,0,84,0,81,0,79,0,76,0,0,0],[79,0,76,0,74,0,72,0,74,0,76,0,72,0,0,0],
+ [84,0,81,0,79,0,81,0,84,0,81,0,79,0,0,0],[79,0,76,0,74,0,76,0,79,0,76,0,74,0,0,0],[72,0,76,0,79,0,81,0,84,0,81,0,79,0,76,0],[74,0,72,0,74,0,76,0,72,0,0,0,0,0,0,0]];
+function playBounce(t,s,bar,dg){const ci=bar%4,ch=B_CH[ci],root=B_ROOT[ci],m=B_MEL[bar%8][s];
+  if(s===0||s===6||s===8||s===14)ch.forEach(n=>mn(t,n+12,.2,"triangle",.03));
+  if(s===0||s===4||s===8||s===10||s===12)mn(t,s===8?root+7:(s===10?root+12:root),.28,"triangle",.1);
+  if(s===0||s===8||(s===10&&bar%2))mkick(t,.15);if(s===4||s===12)msnare(t,.08);if(s%2===0)mhat(t,.024,s===14);
+  if(m)mn(t,m,.3,"triangle",.07,MU.echo,.004),mn(t,m+12,.22,"sine",.022,MU.echo,.004)}
+// Dream: sparkly harp arpeggios, bells and soft pads (D major)
+const D_CH=[[62,66,69,73],[59,62,66,69],[55,59,62,66],[57,61,64,67]],D_ROOT=[50,47,43,45],D_PENT=[74,76,78,81,83,86];
+function playDream(t,s,bar,dg,spb){const ci=bar%4,ch=D_CH[ci];
+  if(s===0){ch.forEach(n=>{mn(t,n+12,spb*15,"sine",.05,MU.pad,.9);mn(t,n,spb*15,"triangle",.02,MU.pad,1.1)});mn(t,D_ROOT[ci],spb*14,"sine",.11,MU.master,.08)}
+  if(s%2===0){const seq=[0,1,2,3,2,1,0,1],n=ch[seq[(s/2)%8]]+12;mn(t,n,.5,"triangle",.06,MU.echo,.004);mn(t,n+12,.3,"sine",.02,MU.echo,.004)}
+  if(s%4===0&&((bar*7+s*3)%5<2)){const m=D_PENT[(bar*3+s)%D_PENT.length];mn(t,m,1.1,"sine",.06,MU.echo,.004);mn(t,m+12,.8,"sine",.02,MU.echo,.004)}
+  if(s===8)mhat(t,.012,true)}
+// Chill: lo-fi swung groove, soft electric piano (Dm7 G7 Cmaj7 Am7)
+const C_CH=[[62,65,69,72],[55,59,62,65],[60,64,67,71],[57,60,64,67]],C_ROOT=[50,55,48,57],C_PENT=[72,74,76,79,81,84];
+function playChill(t,s,bar,dg,spb){const ci=bar%4,ch=C_CH[ci],sw=(s%4===2)?spb*.5:0,tt=t+sw;
+  if(s===0||s===7||s===10)ch.forEach((n,i)=>{mn(tt,n+12,.55,"sine",.034,MU.master,.01);mn(tt,n+12.05,.45,"triangle",.012,MU.master,.01)});
+  if(s===0||s===6||s===10)mn(tt,C_ROOT[ci],.38,"triangle",.1);
+  if(s===0||s===10)mkick(t,.13);if(s===8)msnare(t,.06);if(s%2===0)mhat(tt,.02,false);
+  if(s%4===0&&((bar*5+s)%7<3)){const m=C_PENT[(bar*2+s/2)%C_PENT.length];mn(tt,m,.5,"triangle",.05,MU.echo,.01)}}
+// Arcade: retro square waves and a driving beat (A minor)
+const A_CH=[[57,60,64],[53,57,60],[60,64,67],[55,59,62]],A_ROOT=[45,41,48,43],A_PENT=[81,84,86,88,91,93];
+function playArcade(t,s,bar,dg){const ci=bar%4,ch=A_CH[ci];
+  mn(t,ch[s%3]+24,.09,"square",.022);
+  if(s%4===0||s===6||s===14)mn(t,A_ROOT[ci]+12,.2,"square",.05);
+  if(s===0||s===8||s===10)mkick(t,.13);if(s===4||s===12)msnare(t,.075);mhat(t,s%2?.012:.022,false);
+  if(s%2===0&&((bar+s)%3!==1)){const m=A_PENT[(bar*5+s)%A_PENT.length];mn(t,m,.16,"square",.032,MU.echo)}}
+const MPLAY={bounce:playBounce,dream:playDream,chill:playChill,arcade:playArcade};
+MU.danger=0;
+function musicTick(){if(!MU.on||!AC)return;MU.danger+=(dangerNow()-MU.danger)*.4;const want=desiredStyle();
+  while(MU.next<AC.currentTime+.9){
+    if(MU.step%16===0&&want!==MU.style){MU.style=want;MU.step=0}
+    const dg=MU.danger,spb=60/(MBPM[MU.style]*(1+.3*dg))/4,t=MU.next,s=MU.step%16,bar=Math.floor(MU.step/16);
+    MPLAY[MU.style](t,s,bar,dg,spb);
+    if(dg>.3&&s%2===0)mn(t,79,.1,"triangle",.06*dg);
+    if(dg>.6&&s%2===1)mn(t,86,.08,"square",.022*dg,MU.master,.002);
     MU.next+=spb;MU.step++}}
 function musicStart(){if(!opt.music||MU.on)return;const a=actx();if(!a)return;
   if(!MU.master){MU.master=a.createGain();MU.master.gain.value=0;MU.master.connect(a.destination);
@@ -400,7 +445,7 @@ function startGame(mode,stage,tier){
      undo:null,undoUsed:false,date:d,over:false,won:false,overT:0,seedBase,lastScoreAnim:0};
   if(cfg.stones)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
   if(cfg.design){applyDesign(G.board,cfg.design);G.pre=copyBoard(G.board)}
-  G.startFill=G.board.flat().filter(v=>v!==null).length;
+  G.startFill=G.board.flat().filter(v=>v!==null).length;G.mstyle=pickStyle();
   nextSet();state="play";hide("menu");hide("over");sfx.start();showIntro()}
 function seedFn(){return a=>G.mode!=="classic"?mulberry(hash(G.seedBase+"|"+G.turn+"|"+a)):Math.random}
 function nextSet(){const set=genSet(G.board,seedFn(),G.cfg.colors,G.cfg.hard,G.cfg.bias||0);G.turn++;
@@ -604,9 +649,11 @@ $("bMenu").onclick=()=>{state="menu";hide("over");show("menu");refreshMenu()};
 $("bHow").onclick=()=>{hide("menu");show("how")};$("bHowOk").onclick=()=>{hide("how");show("menu")};
 $("tMusic").onclick=()=>{opt.music=!opt.music;store("hz_music",opt.music?"1":"0");syncOpts();if(opt.music)musicStart();else musicStop()};
 $("tVibe").onclick=()=>{opt.vibe=!opt.vibe;store("hz_vibe",opt.vibe?"1":"0");syncOpts();if(opt.vibe){vib([120,60,120]);if(!canVibe())toast("This phone or browser does not allow vibration")}};
+$("tMStyle").onclick=()=>{const i=MSTYLES.indexOf(opt.mstyle);opt.mstyle=MSTYLES[(i+1)%MSTYLES.length];store("hz_mstyle",opt.mstyle);syncOpts()};
 $("tSound").onclick=()=>{opt.sound=!opt.sound;store("hz_sound",opt.sound?"1":"0");syncOpts();if(opt.sound)sfx.pick()};
 $("tCB").onclick=()=>{opt.cb=!opt.cb;store("hz_cb",opt.cb?"1":"0");syncOpts()};
-function syncOpts(){$("tVibe").textContent="Vibrate: "+(opt.vibe?(canVibe()?"on":"on (not supported here)"):"off");$("tVibe").classList.toggle("off",!opt.vibe);
+function syncOpts(){$("tMStyle").textContent="Music style: "+(opt.mstyle==="auto"?"random each level":opt.mstyle);$("tMStyle").classList.toggle("off",!opt.music);
+  $("tVibe").textContent="Vibrate: "+(opt.vibe?(canVibe()?"on":"on (not supported here)"):"off");$("tVibe").classList.toggle("off",!opt.vibe);
   $("tMusic").textContent="Music: "+(opt.music?"on":"off");$("tMusic").classList.toggle("off",!opt.music);
   $("tSound").textContent="Sound: "+(opt.sound?"on":"off");$("tSound").classList.toggle("off",!opt.sound);
   $("tCB").textContent="Color-blind symbols: "+(opt.cb?"on":"off");$("tCB").classList.toggle("off",!opt.cb)}

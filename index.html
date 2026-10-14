@@ -91,7 +91,22 @@
     <button class="chip" id="tVibe">Vibrate: on</button>
     <button class="chip off" id="tCB">Color-blind symbols: off</button>
   </div>
-  <button class="chip" id="bHow">How to play</button>
+  <div id="iosTip" style="display:none;max-width:320px;font-size:13px;font-weight:700;line-height:1.4;color:#ffe9a8;background:rgba(255,200,60,.12);border:1px solid rgba(255,226,122,.5);border-radius:14px;padding:8px 12px">Tip: tap Share, then Add to Home Screen, and play from the icon. Safari can erase saved progress from a web page!</div>
+  <div class="row"><button class="chip" id="bHow">How to play</button><button class="chip" id="bSave">Save / restore progress</button></div>
+</div>
+
+<div class="screen" id="saveScr">
+  <div class="panel" style="text-align:left">
+    <div class="lbl">Save your progress</div>
+    <p style="font-weight:700;line-height:1.45;font-size:14px;margin:8px 0">Your levels and boosters are stored on this phone. If they ever reset, or you get a new phone or install the app, paste your code here to get them back.</p>
+    <div class="lbl">1 · Your code (copy it somewhere safe)</div>
+    <textarea id="saveOut" readonly rows="3" style="width:100%;margin:6px 0;padding:10px;border-radius:12px;border:1px solid var(--edge);background:rgba(0,0,0,.3);color:#fff;font:600 12px monospace;user-select:text;-webkit-user-select:text"></textarea>
+    <button class="btn gold" id="bCopy" style="width:100%;margin-bottom:12px">COPY MY CODE</button>
+    <div class="lbl">2 · Restore from a code</div>
+    <textarea id="saveIn" rows="3" placeholder="Paste a code that starts with HUEZEL1:" style="width:100%;margin:6px 0;padding:10px;border-radius:12px;border:1px solid var(--edge);background:rgba(0,0,0,.3);color:#fff;font:600 12px monospace;user-select:text;-webkit-user-select:text"></textarea>
+    <button class="btn hot" id="bRestore" style="width:100%;margin-bottom:10px">RESTORE</button>
+    <button class="chip" id="bSaveBack">Back</button>
+  </div>
 </div>
 
 <div class="screen" id="how">
@@ -635,6 +650,21 @@ function openLvl(L){let h='<div class="lbl">Level '+L+'</div><div style="font-si
   $("lvlBody").dataset.l=L}
 $("lvlBody").addEventListener("click",e=>{if(e.target.closest("#lvlClose")){hide("lvl");return}const b=e.target.closest(".tierbtn");if(!b||b.classList.contains("lock"))return;
   const L=+$("lvlBody").dataset.l,t=+b.dataset.t;hide("lvl");hide("map");startGame("stage",L,t)});
+
+/* ============ keep progress safe ============ */
+function makeCode(){try{const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf("hz_")===0)o[k]=localStorage.getItem(k)}
+  return"HUEZEL1:"+btoa(unescape(encodeURIComponent(JSON.stringify(o))))}catch(e){return"Could not read saved progress on this browser."}}
+function restoreCode(txt){try{txt=(txt||"").trim();if(txt.indexOf("HUEZEL1:")!==0)throw 0;const o=JSON.parse(decodeURIComponent(escape(atob(txt.slice(8)))));let n=0;
+  Object.keys(o).forEach(k=>{if(k.indexOf("hz_")===0&&typeof o[k]==="string"){localStorage.setItem(k,o[k]);n++}});if(!n)throw 0;return true}catch(e){return false}}
+function standalone(){return(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true}
+if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{})}
+$("bSave").onclick=()=>{$("saveOut").value=makeCode();$("saveIn").value="";hide("menu");show("saveScr")};
+$("bSaveBack").onclick=()=>{hide("saveScr");show("menu")};
+$("bCopy").onclick=async()=>{const t=$("saveOut").value;try{await navigator.clipboard.writeText(t);toast("Code copied! Paste it into a note or message to yourself.")}catch(e){$("saveOut").select();toast("Press and hold the code, then tap Copy")}};
+$("bRestore").onclick=()=>{const t=$("saveIn").value;if(!t.trim()){toast("Paste your code first");return}
+  if(!confirm("Restore progress from this code? This replaces the progress on this phone."))return;
+  if(restoreCode(t)){toast("Progress restored!");setTimeout(()=>location.reload(),700)}else toast("That code didn't work. Copy the whole code, starting with HUEZEL1:")};
+if(isIOS&&!standalone())$("iosTip").style.display="block";
 
 /* ============ screens ============ */
 function show(id){$(id).classList.add("show")}function hide(id){$(id).classList.remove("show")}

@@ -11,7 +11,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Huezel">
-<meta name="description" content="Huezel: a color block puzzle with Pure clears and a daily challenge. No ads while you play.">
+<meta name="description" content="Huezel: a color block puzzle with Pure clears and a weekly challenge. No ads while you play.">
 <title>Huezel - Color Block Puzzle</title>
 <style>
   :root{--glass:rgba(255,255,255,.08);--edge:rgba(255,255,255,.22)}
@@ -20,6 +20,8 @@
   canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
   .screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
   .screen.show{display:flex}
+  #intro,#how{background:rgba(8,5,32,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  #intro .chip{margin:2px;display:inline-block}
   .logo{font-size:min(17vw,96px);font-weight:900;letter-spacing:.04em;margin:0;line-height:1;
     background:linear-gradient(90deg,#ff3d5a,#ffc21a 28%,#1fd16a 55%,#2f7bff 80%,#a64dff);-webkit-background-clip:text;background-clip:text;color:transparent;
     filter:drop-shadow(0 0 22px rgba(255,255,255,.28)) drop-shadow(0 6px 0 rgba(0,0,0,.35));animation:glow 3.2s ease-in-out infinite}
@@ -56,7 +58,7 @@
   <h1 class="logo">HUEZEL</h1>
   <div style="height:8px"></div>
   <button class="btn hot" id="bStage">JOURNEY<small id="stageSub">stage 1</small></button>
-  <button class="btn gold" id="bDaily">DAILY CHALLENGE<small id="dailySub">very hard · new every day</small></button>
+  <button class="btn gold" id="bDaily">WEEKLY CHALLENGE<small id="dailySub">very hard · new every week</small></button>
   <button class="btn" id="bClassic">CLASSIC<small>endless, chase your best</small></button>
   <input class="name" id="nameIn" maxlength="14" placeholder="Your name (shown when you share)">
   <div class="row">
@@ -71,10 +73,21 @@
     <div class="lbl">How to play</div>
     <p style="font-weight:700;line-height:1.5">Drag the three shapes onto the grid. Fill a full row or column to clear it.</p>
     <p style="font-weight:700;line-height:1.5;color:#ffd96a">PURE CLEAR: if the whole line is ONE color, it clears 3x and also blows up every touching block of that color!</p>
-    <p style="font-weight:700;line-height:1.5">JOURNEY: every stage has a goal (clear lines, make Pure clears). Each stage is a little harder. The DAILY CHALLENGE is a new, very hard puzzle every day.</p>
+    <p style="font-weight:700;line-height:1.5">JOURNEY: every stage has a goal (clear lines, make Pure clears). Each stage is a little harder. The WEEKLY CHALLENGE is a new, very hard puzzle every Monday. You get all week to solve it.</p>
     <p style="font-weight:700;line-height:1.5">Clear on back-to-back turns for a combo. You fail if no shape fits.</p>
     <p style="opacity:.7;font-size:13px">No ads while you play. No lives. No timers.</p>
     <button class="btn hot" id="bHowOk" style="width:100%">GOT IT</button>
+  </div>
+</div>
+
+<div class="screen" id="intro">
+  <div class="panel" style="text-align:center">
+    <div class="lbl" id="inKind">Stage 1</div>
+    <div style="font-size:30px;font-weight:900;margin:8px 0 4px" id="inGoal">Clear 3 lines</div>
+    <div id="inChips" style="margin:6px 0 14px"></div>
+    <div style="font-weight:700;line-height:1.5;opacity:.92;margin-bottom:6px" id="inTip"></div>
+    <div id="inExtra" style="font-size:13px;opacity:.7;margin-bottom:16px;line-height:1.4"></div>
+    <button class="btn hot" id="bGo" style="width:100%">LET'S GO</button>
   </div>
 </div>
 
@@ -105,7 +118,8 @@ const COLORS=[
  {name:"blue",  light:"#92d2ff", base:"#2f7bff", dark:"#173d9e", glow:"47,123,255", emoji:"🟦"},
  {name:"green", light:"#9affbb", base:"#1fd16a", dark:"#0a7040", glow:"31,209,106", emoji:"🟩"},
  {name:"yellow",light:"#fff39a", base:"#ffc21a", dark:"#c46d00", glow:"255,194,26", emoji:"🟨"},
- {name:"purple",light:"#e2b4ff", base:"#a64dff", dark:"#5a1fa8", glow:"166,77,255", emoji:"🟪"}
+ {name:"purple",light:"#e2b4ff", base:"#a64dff", dark:"#5a1fa8", glow:"166,77,255", emoji:"🟪"},
+ {name:"stone", light:"#e4e8f2", base:"#8d96ac", dark:"#3f475c", glow:"150,160,185", emoji:"⬜"}
 ];
 const BASE_SHAPES=[
  ["#"],["##"],["###"],["####"],["#####"],["##","##"],["###","###","###"],["###","###"],
@@ -120,6 +134,9 @@ const rnd=(a,b)=>a+Math.random()*(b-a);
 function mulberry(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
 function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+function ymd(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function weekStr(off=0){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)+off*7);return ymd(d)}
+function weekLabel(w){const d=new Date(w+"T12:00:00");return d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}
 function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),2200)}
 /* ============ shapes ============ */
@@ -144,8 +161,11 @@ function solvable(b,pcs){let budget=12000;
         const nb=copyBoard(board);s.cells.forEach(([i,j])=>nb[r+i][c+j]=1);simClear(nb);if(dfs(nb,rest))return true}}
     return false}
   return dfs(copyBoard(b),pcs)}
-function genSet(b,seedFn,nc=4,h=0){for(let a=0;a<40;a++){const rng=seedFn(a);const shapes=[0,1,2].map(()=>pickShape(rng,h));
-    if(solvable(b,shapes))return shapes.map(s=>({s,color:Math.floor(rng()*nc)}))}
+function focusColor(b,nc,rng){let best=-1,col=-1;const scan=arr=>{let c=-1,k=0;for(const v of arr){if(v===null)continue;if(v===5||v>=nc)return;if(c===-1)c=v;else if(v!==c)return;k++}if(k>best&&k<N){best=k;col=c}};
+  for(let r=0;r<N;r++)scan(b[r]);for(let c=0;c<N;c++){const a=[];for(let r=0;r<N;r++)a.push(b[r][c]);scan(a)}
+  return col>=0?col:Math.floor(rng()*nc)}
+function genSet(b,seedFn,nc=4,h=0,bias=0){for(let a=0;a<40;a++){const rng=seedFn(a);const shapes=[0,1,2].map(()=>pickShape(rng,h));
+    if(solvable(b,shapes)){const base=focusColor(b,nc,rng);return shapes.map(s=>({s,color:rng()<bias?base:Math.floor(rng()*nc)}))}}
   const rng=seedFn(99);return[0,1,2].map(()=>({s:SHAPES[Math.floor(rng()*3)],color:Math.floor(rng()*nc)}))}
 /* ============ state ============ */
 const cv=$("c"),ctx=cv.getContext("2d");
@@ -218,7 +238,7 @@ function getSprite(ci){return sprites[ci]||(sprites[ci]=makeSprite(ci))}
 function block(x,y,s,ci,alpha=1,glowPulse=0){
   const sp=getSprite(ci),e=s*PADF,sz=s+2*e;ctx.save();ctx.globalAlpha=alpha;ctx.drawImage(sp.k,x-e,y-e,sz,sz);
   if(glowPulse>0){ctx.globalAlpha=alpha*glowPulse*.7;ctx.fillStyle="#fff";rr(x+s*.05,y+s*.05,s*.9,s*.9,s*.24);ctx.fill()}
-  if(opt.cb){ctx.globalAlpha=alpha;drawSymbol(ci,x+s/2,y+s/2+s*.03,s,"rgba(255,255,255,.95)")}
+  if(opt.cb&&ci<5){ctx.globalAlpha=alpha;drawSymbol(ci,x+s/2,y+s/2+s*.03,s,"rgba(255,255,255,.95)")}
   ctx.restore()}
 /* ============ effects ============ */
 function burst(x,y,ci,n,spd=1){const c=COLORS[ci];for(let i=0;i<n;i++){const a=rnd(0,6.28),v=rnd(120,620)*spd;
@@ -227,27 +247,27 @@ function ring(x,y,col,max=520,life=.7,w=10){fx.rings.push({x,y,r:10,max,life:0,d
 function floatText(x,y,text,col="#fff",size=54){fx.floats.push({x,y,text,col,size,life:0,max:1.15})}
 function cellXY(r,c){return[BX+c*CELL,BY+r*CELL]}
 /* ============ game flow ============ */
-function stageCfg(n){const h=Math.min(1,(n-1)/28);
-  return{kind:"stage",n,colors:n>=8?5:4,prefill:Math.min(Math.round((n-1)*.9),14),goalLines:3+Math.floor((n-1)*.9),goalPure:n<4?0:Math.min(1+Math.floor((n-4)/5),5),hard:h}}
+function stageCfg(n){
+  return{kind:"stage",n,colors:n<=1?1:n<=4?2:n<=8?3:n<=14?4:5,stones:n<5?0:Math.min(2+Math.floor((n-5)*.8),10),
+    goalLines:2+Math.floor((n-1)*.6),goalPure:n<2?0:Math.min(1+Math.floor((n-2)/3),5),hard:Math.min(1,Math.max(0,(n-6)/24)),bias:Math.max(0,.9-n*.045)}}
 function dailyCfg(d){const rg=mulberry(hash("cfg|"+d));
-  return{kind:"daily",colors:5,prefill:8+Math.floor(rg()*5),goalLines:12+Math.floor(rg()*4),goalPure:2+Math.floor(rg()*2),hard:1}}
-function prefillBoard(b,cfg,seed){const rg=mulberry(hash(seed));let n=cfg.prefill,guard=0;
+  return{kind:"daily",colors:5,stones:5+Math.floor(rg()*4),goalLines:12+Math.floor(rg()*4),goalPure:3+(rg()<.4?1:0),hard:1,bias:.15}}
+function prefillBoard(b,cfg,seed){const rg=mulberry(hash(seed));let n=cfg.stones,guard=0;
   const rowC=Array(N).fill(0),colC=Array(N).fill(0);
-  while(n>0&&guard++<500){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]!==null||rowC[r]>=4||colC[c]>=4)continue;
-    let col=Math.floor(rg()*cfg.colors);for(const[dr,dc]of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(nr>=0&&nc>=0&&nr<N&&nc<N&&b[nr][nc]!==null&&rg()<.55){col=b[nr][nc];break}}
-    b[r][c]=col;rowC[r]++;colC[c]++;n--}}
+  while(n>0&&guard++<600){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]!==null||rowC[r]>=3||colC[c]>=3)continue;
+    b[r][c]=5;rowC[r]++;colC[c]++;n--}}
 function stageNow(){return Math.max(1,+store("hz_stage")||1)}
 function startGame(mode,stage){
-  const d=todayStr();let cfg,seedBase=Math.random().toString(36).slice(2);
+  const d=mode==="daily"?weekStr():todayStr();let cfg,seedBase=Math.random().toString(36).slice(2);
   if(mode==="stage"){const n=stage||stageNow();cfg=stageCfg(n);const rt=(startGame.retry&&startGame.retry.n===n)?startGame.retry.r:0;seedBase="stage"+n+"r"+rt}
   else if(mode==="daily"){cfg=dailyCfg(d);seedBase="huezel-"+d}
-  else cfg={kind:"classic",colors:4,prefill:0,goalLines:0,goalPure:0,hard:0};
+  else cfg={kind:"classic",colors:4,stones:0,goalLines:0,goalPure:0,hard:0,bias:0};
   G={mode,cfg,board:newBoard(),score:0,shown:0,best:+store("hz_best_"+mode)||0,combo:0,bestCombo:0,pure:0,lines:0,placed:0,turn:0,pieces:[],drag:null,
      undo:null,undoUsed:false,date:d,over:false,won:false,overT:0,seedBase,lastScoreAnim:0};
-  if(cfg.prefill)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
-  nextSet();state="play";hide("menu");hide("over");sfx.start()}
+  if(cfg.stones)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
+  nextSet();state="play";hide("menu");hide("over");sfx.start();showIntro()}
 function seedFn(){return a=>G.mode!=="classic"?mulberry(hash(G.seedBase+"|"+G.turn+"|"+a)):Math.random}
-function nextSet(){const set=genSet(G.board,seedFn(),G.cfg.colors,G.cfg.hard);G.turn++;
+function nextSet(){const set=genSet(G.board,seedFn(),G.cfg.colors,G.cfg.hard,G.cfg.bias||0);G.turn++;
   G.pieces=set.map((p,i)=>({s:p.s,color:p.color,used:false,x:LW/2,y:LH+200,sc:.2,slot:i,t:-i*.09,id:Math.random()}))}
 function slotCenter(i){return[120+i*240,TRAY_Y]}
 function snapshot(){return{board:copyBoard(G.board),score:G.score,combo:G.combo,pure:G.pure,lines:G.lines,bestCombo:G.bestCombo,
@@ -307,7 +327,7 @@ function resolve(){
   // board empty = perfect
   if(B.every(r=>r.every(v=>v===null))){G.score+=500;floatText(LW/2,LH/2-100,"PERFECT BOARD +500","#ffd96a",58);ring(LW/2,BY+320,"#ffd96a",900,1.1,18)}
 }
-function yesterdayStr(){const y=new Date();y.setDate(y.getDate()-1);return y.getFullYear()+"-"+String(y.getMonth()+1).padStart(2,"0")+"-"+String(y.getDate()).padStart(2,"0")}
+function yesterdayStr(){return weekStr(-1)}
 function starsFor(){const c=G.cfg,par=Math.ceil(c.goalLines*2)+c.goalPure*2+4,u=G.placed;return u<=par?3:(u<=par*1.5?2:1)}
 function endGame(){
   state="over";const m=G.mode,c=G.cfg;let best=+store("hz_best_"+m)||0;const isBest=G.score>best;if(isBest){best=G.score;store("hz_best_"+m,String(best))}
@@ -317,10 +337,10 @@ function endGame(){
   else{const goalTxt="Lines "+Math.min(G.lines,c.goalLines)+"/"+c.goalLines+(c.goalPure?"  ·  Pure "+Math.min(G.pure,c.goalPure)+"/"+c.goalPure:"");
     if(G.won){sfx.pure();const st=starsFor();G.stars=st;stars="★".repeat(st)+"☆".repeat(3-st);info="Solved with "+G.placed+" pieces";
       if(m==="stage"){title="Stage "+c.n+" clear!";if(c.n>=stageNow())store("hz_stage",String(c.n+1));$("bNext").style.display="block";$("bAgain").textContent="REPLAY"}
-      else{title="Daily solved!";const d=G.date;let last=store("hz_last_daily"),sk=+store("hz_streak")||0;
+      else{title="Weekly challenge solved!";const d=G.date;let last=store("hz_last_daily"),sk=+store("hz_streak")||0;
         if(last!==d){sk=(last===yesterdayStr())?sk+1:1;store("hz_streak",String(sk));store("hz_last_daily",d);store("hz_daily_score_"+d,String(G.score))}
-        streakTxt="Daily streak: "+sk+" day"+(sk>1?"s":"")}}
-    else{sfx.over();title=m==="stage"?"Stage "+c.n+" failed":"Daily not solved";info=goalTxt+" - no room left";$("bAgain").textContent="TRY AGAIN";
+        streakTxt="Weekly streak: "+sk+" week"+(sk>1?"s":"")}}
+    else{sfx.over();title=m==="stage"?"Stage "+c.n+" failed":"Weekly not solved yet";info=goalTxt+" - no room left";$("bAgain").textContent="TRY AGAIN";
       if(m==="stage")startGame.retry={n:c.n,r:((startGame.retry&&startGame.retry.n===c.n)?startGame.retry.r:0)+1};
       if(m==="daily"){const d=G.date;store("hz_att_"+d,String((+store("hz_att_"+d)||0)+1))}}}
   $("ovTitle").textContent=title;$("ovStars").textContent=stars;$("ovInfo").textContent=info;
@@ -330,13 +350,31 @@ function endGame(){
 function shareText(){
   const name=($("nameIn").value||"").trim();let grid="";
   for(let r=0;r<N;r++){let line="";for(let c=0;c<N;c++){const v=G.board[r][c];line+=v===null?"⬛":COLORS[v].emoji}grid+=line+"\n"}
-  const mode=G.mode==="daily"?"Daily "+G.date:(G.mode==="stage"?"Stage "+G.cfg.n:"Classic");
+  const mode=G.mode==="daily"?"Weekly Challenge ("+weekLabel(G.date)+")":(G.mode==="stage"?"Stage "+G.cfg.n:"Classic");
   const head=(name?name+"'s ":"")+"Huezel "+mode;
   const res=G.mode==="classic"?"":(G.won?("✅ Solved in "+G.placed+" pieces "+"★".repeat(G.stars||1)+"\n"):("❌ "+Math.min(G.lines,G.cfg.goalLines)+"/"+G.cfg.goalLines+" lines"+(G.cfg.goalPure?" · "+Math.min(G.pure,G.cfg.goalPure)+"/"+G.cfg.goalPure+" Pure":"")+"\n"));
   return head+"\n"+res+G.score.toLocaleString()+" pts  ·  "+G.pure+" Pure clears  ·  combo x"+G.bestCombo+"\n"+grid+"Play: huezel.com"}
-function refreshMenu(){const st=+store("hz_streak")||0,last=store("hz_last_daily"),t=todayStr(),att=+store("hz_att_"+t)||0;
-  $("dailySub").textContent=(last===t?"solved today ✓":(att?att+" attempt"+(att>1?"s":"")+" today":"very hard · new every day"))+(st?" · streak "+st:"");
+function refreshMenu(){const st=+store("hz_streak")||0,last=store("hz_last_daily"),t=weekStr(),att=+store("hz_att_"+t)||0;
+  $("dailySub").textContent=(last===t?"solved this week ✓":(att?att+" attempt"+(att>1?"s":"")+" this week":"very hard · new every week"))+(st?" · "+st+" wk streak":"");
   $("stageSub").textContent="stage "+stageNow()}
+function goalText(c){return c.kind==="classic"?"":("Clear "+c.goalLines+" lines")}
+function tipFor(c){
+  if(c.kind==="daily")return"This week's puzzle is the same for everyone, and you have all week to solve it. Stones can't be part of a Pure line, so clear them with normal lines first.";
+  if(c.n===1)return"Drag shapes onto the grid. Fill a whole row or column to clear it. Everything is one color here, so every line is a PURE clear!";
+  if(c.n===2)return"Now there are two colors. Fill a line with just ONE color to make a PURE clear: 3x points and it blows up touching blocks of that color!";
+  if(c.n<=4)return"Look for glowing lines on the board. They're all one color so far. Add matching pieces to finish a PURE line!";
+  if(c.stones&&c.n<=9)return"New: gray STONES! A line with a stone can't be Pure, but it still clears. Plan your Pure lines in stone-free rows and columns.";
+  return"Keep each line ONE color. Glowing lines and the star on a piece show where a Pure clear is close.";}
+function showIntro(){if(G.cfg.kind==="classic")return;const c=G.cfg;
+  $("inKind").textContent=c.kind==="daily"?"Weekly challenge · week of "+weekLabel(G.date):"Stage "+c.n;
+  $("inGoal").textContent=goalText(c);
+  $("inChips").innerHTML=(c.goalPure?'<span class="chip" style="cursor:default;color:#ffd96a;border-color:#ffd96a">★ '+c.goalPure+' PURE clear'+(c.goalPure>1?"s":"")+' needed</span> ':"")+
+    (c.stones?'<span class="chip" style="cursor:default">'+c.stones+' stones</span> ':"")+'<span class="chip" style="cursor:default">'+c.colors+' color'+(c.colors>1?"s":"")+'</span>';
+  $("inTip").textContent=tipFor(c);
+  $("inExtra").textContent=c.kind==="daily"?"A new puzzle every Monday. Solve it to keep your weekly streak.":(c.goalPure?"Pure clears count toward your line total too.":"");
+  show("intro")}
+$("bGo").onclick=()=>{hide("intro");if(G){G.idle=0;G.hint=null}};
+
 /* ============ screens ============ */
 function show(id){$(id).classList.add("show")}function hide(id){$(id).classList.remove("show")}
 $("bClassic").onclick=()=>{store("hz_name",$("nameIn").value);startGame("classic")};
@@ -408,13 +446,30 @@ function previewInfo(){ // ghost + completing lines
   const lines=[];rows.forEach(r=>lines.push({row:true,i:r,pure:b[r].every(v=>v===b[r][0])}));
   cols.forEach(c=>{let pure=true;for(let r=0;r<N;r++)if(b[r][c]!==b[0][c])pure=false;lines.push({row:false,i:c,pure})});
   return{t,p,lines}}
+function lineCues(){const B=G.board,cues=[];
+  const check=(arr,isRow,i)=>{let col=-1,k=0;for(const v of arr){if(v===null)continue;if(v===5)return;if(col===-1)col=v;else if(v!==col)return;k++}
+    if(k>=2&&k<N)cues.push({isRow,i,col,k})};
+  for(let r=0;r<N;r++)check(B[r],true,r);
+  for(let c=0;c<N;c++){const a=[];for(let r=0;r<N;r++)a.push(B[r][c]);check(a,false,c)}
+  G.cues=cues;
+  cues.forEach(q=>{const col=COLORS[q.col],near=q.k>=N-3,pulse=.5+.5*Math.sin(bgT*(near?9:4));ctx.save();
+    ctx.lineWidth=near?5:3;ctx.strokeStyle=near?"rgba(255,226,122,"+(.45+.5*pulse)+")":"rgba("+col.glow+","+(.25+.35*q.k/N)+")";
+    ctx.shadowColor=near?"#ffd96a":"rgba("+col.glow+",1)";ctx.shadowBlur=near?26:14;
+    if(q.isRow)rr(BX-3,BY+q.i*CELL+2,N*CELL+6,CELL-4,20);else rr(BX+q.i*CELL+2,BY-3,CELL-4,N*CELL+6,20);ctx.stroke();ctx.restore()})}
+function tipBar(pv){let msg="",col="rgba(255,255,255,.75)",size=26;
+  if(pv&&pv.lines.some(l=>l.pure)){msg="PURE CLEAR!  3x + chain";col="#ffd96a";size=34}
+  else if(pv&&pv.lines.length){msg="Line clear!";col="#9ee8ff";size=30}
+  else if(G.cues&&G.cues.some(q=>q.k>=N-3)){msg="So close! Finish the glowing line in ONE color";col="#ffd96a"}
+  else if(G.cues&&G.cues.length){msg="Glowing line = one color so far. Keep going!";col="#ffe9a8"}
+  else if(G.cfg.kind!=="classic"&&G.cfg.goalPure&&(G.cfg.kind==="daily"||G.cfg.n<=8)){msg="Fill a whole line with ONE color = PURE";col="rgba(255,255,255,.7)"}
+  if(!msg)return;ctx.save();ctx.font="800 "+size+"px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=col;ctx.shadowColor="rgba(0,0,0,.7)";ctx.shadowBlur=8;ctx.fillText(msg,LW/2,BY+N*CELL+44);ctx.restore()}
 function render(){
   ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(DPR,0,0,DPR,0,0);
   background();
   ctx.save();ctx.translate(OX,OY);ctx.scale(VS,VS);
   if(fx.shake>0){ctx.translate(rnd(-1,1)*fx.shake*18,rnd(-1,1)*fx.shake*18)}
   if(state==="menu"||!G){menuBlocks.forEach(b=>{ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.rot);block(-b.sz/2,-b.sz/2,b.sz,b.c,.55);ctx.restore()});ctx.restore();return}
-  hud();boardPanel();
+  hud();boardPanel();lineCues();
   const pv=previewInfo();
   if(pv){pv.lines.forEach(L=>{const col=pv.p.color;ctx.save();ctx.fillStyle=L.pure?"rgba(255,230,120,.28)":"rgba(255,255,255,.2)";
       const pulse=.6+.4*Math.sin(bgT*12);ctx.shadowColor=L.pure?"#ffd96a":"rgba("+COLORS[col].glow+",1)";ctx.shadowBlur=30*pulse;
@@ -434,10 +489,12 @@ function render(){
   // rings
   fx.rings.forEach(r=>{const u=r.life/r.dur,e=1-Math.pow(1-u,3);ctx.save();ctx.globalAlpha=1-u;ctx.strokeStyle=r.col;ctx.lineWidth=r.w*(1-u)+1;ctx.shadowColor=r.col;ctx.shadowBlur=30;
     ctx.beginPath();ctx.arc(r.x,r.y,10+(r.max-10)*e,0,6.3);ctx.stroke();ctx.restore()});
+  tipBar(pv);
   // tray
   ctx.fillStyle="rgba(255,255,255,.05)";rr(30,TRAY_Y-135,660,270,34);ctx.fill();
   ctx.strokeStyle="rgba(255,255,255,.12)";ctx.lineWidth=2;rr(30,TRAY_Y-135,660,270,34);ctx.stroke();
-  G.pieces.forEach(p=>{if(p.used||p.t<0)return;if(G.drag&&G.drag.p===p)return;drawPiece(p)});
+  G.pieces.forEach(p=>{if(p.used||p.t<0)return;if(G.drag&&G.drag.p===p)return;drawPiece(p);
+    if(G.cues&&G.cues.some(q=>q.col===p.color&&q.k>=3)){const pu=.6+.4*Math.sin(bgT*6),[sx,sy]=slotCenter(p.slot);ctx.save();ctx.fillStyle="#ffe27a";ctx.shadowColor="#ffd96a";ctx.shadowBlur=18*pu;ctx.font="900 40px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.globalAlpha=.6+.4*pu;ctx.fillText("★",sx,sy-100);ctx.restore()}});
   if(G.drag)drawPiece(G.drag.p,true);
   // particles
   fx.parts.forEach(p=>{const a=1-p.life/p.max;ctx.save();ctx.globalAlpha=a;ctx.translate(p.x,p.y);ctx.rotate(p.rot);
@@ -455,7 +512,7 @@ function drawPiece(p,lifted){const cs=CELL*p.sc;const w=p.s.w*cs,h=p.s.h*cs;cons
 function hud(){
   ctx.textAlign="center";ctx.textBaseline="middle";
   ctx.font="800 22px 'Segoe UI',system-ui,sans-serif";ctx.fillStyle="rgba(255,255,255,.6)";
-  ctx.fillText(G.mode==="daily"?"DAILY  "+G.date:(G.mode==="stage"?"STAGE "+G.cfg.n:"CLASSIC"),LW/2,52);
+  ctx.fillText(G.mode==="daily"?"WEEKLY  "+weekLabel(G.date):(G.mode==="stage"?"STAGE "+G.cfg.n:"CLASSIC"),LW/2,52);
   ctx.font="900 112px 'Segoe UI',system-ui,sans-serif";ctx.lineWidth=14;ctx.strokeStyle="rgba(20,8,60,.85)";ctx.lineJoin="round";
   const sc=Math.round(G.shown).toLocaleString();const pulse=1+Math.min(.12,Math.abs(G.score-G.shown)/4000);
   ctx.save();ctx.translate(LW/2,142);ctx.scale(pulse,pulse);ctx.strokeText(sc,0,0);

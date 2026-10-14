@@ -195,15 +195,16 @@ function mnote(t,freq,dur,type,vol,dest,attack=.01){const a=AC,o=a.createOscilla
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+attack);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g).connect(dest);o.start(t);o.stop(t+dur+.1)}
 function musicTick(){if(!MU.on||!AC)return;const spb=.42;
   while(MU.next<AC.currentTime+.9){const t=MU.next,st=MU.step%32,ch=CHORDS[Math.floor(st/8)];
-    if(st%8===0){ch.forEach((m,i)=>{mnote(t,mf(m),3.3,"sine",.035,MU.pad,1.0);mnote(t,mf(m)*1.003,3.3,"triangle",.012,MU.pad,1.2)});mnote(t,mf(ch[0]-12),3.0,"sine",.09,MU.master,.05)}
-    if(st%4===0&&Math.random()<.8)mnote(t,mf(ch[0]),.5,"sine",.05,MU.master,.01);
-    if(Math.random()<.5){const m=PENT[Math.floor(Math.random()*PENT.length)];mnote(t+(Math.random()<.5?0:spb/2),mf(m),1.1,"triangle",.03,MU.echo,.005)}
+    if(st%8===0){ch.forEach((m,i)=>{mnote(t,mf(m+12),3.4,"sine",.07,MU.pad,.9);mnote(t,mf(m+24)*1.002,3.4,"triangle",.03,MU.pad,1.1)});
+      mnote(t,mf(ch[0]),3.0,"sine",.12,MU.master,.05);mnote(t,mf(ch[0]+12),3.0,"triangle",.05,MU.master,.05)}
+    if(st%2===0&&Math.random()<.85){const m=ch[(st/2|0)%4]+24;mnote(t,mf(m),.7,"triangle",.07,MU.echo,.01);mnote(t,mf(m+12),.5,"sine",.025,MU.echo,.01)}
+    if(Math.random()<.5){const m=PENT[Math.floor(Math.random()*PENT.length)];mnote(t+(Math.random()<.5?0:spb/2),mf(m),1.2,"triangle",.07,MU.echo,.005);mnote(t,mf(m+12),.8,"sine",.02,MU.echo,.005)}
     MU.next+=spb;MU.step++}}
 function musicStart(){if(!opt.music||MU.on)return;const a=actx();if(!a)return;
   if(!MU.master){MU.master=a.createGain();MU.master.gain.value=0;MU.master.connect(a.destination);
-    MU.pad=a.createBiquadFilter();MU.pad.type="lowpass";MU.pad.frequency.value=1100;MU.pad.connect(MU.master);
+    MU.pad=a.createBiquadFilter();MU.pad.type="lowpass";MU.pad.frequency.value=2600;MU.pad.connect(MU.master);
     MU.echo=a.createGain();MU.echo.connect(MU.master);const dl=a.createDelay(1);dl.delayTime.value=.63;const fb=a.createGain();fb.gain.value=.38;MU.echo.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(MU.master)}
-  MU.on=true;MU.next=a.currentTime+.1;MU.step=0;MU.master.gain.cancelScheduledValues(a.currentTime);MU.master.gain.setValueAtTime(MU.master.gain.value,a.currentTime);MU.master.gain.linearRampToValueAtTime(.8,a.currentTime+2.5);
+  MU.on=true;MU.next=a.currentTime+.1;MU.step=0;MU.master.gain.cancelScheduledValues(a.currentTime);MU.master.gain.setValueAtTime(MU.master.gain.value,a.currentTime);MU.master.gain.linearRampToValueAtTime(1.0,a.currentTime+2.0);
   clearInterval(MU.timer);MU.timer=setInterval(musicTick,200);musicTick()}
 function musicStop(){if(!MU.on)return;MU.on=false;clearInterval(MU.timer);if(AC&&MU.master){MU.master.gain.cancelScheduledValues(AC.currentTime);MU.master.gain.setValueAtTime(MU.master.gain.value,AC.currentTime);MU.master.gain.linearRampToValueAtTime(0,AC.currentTime+.8)}}
 function unlockAudio(){const a=actx();if(a&&a.state!=="running")a.resume();if(opt.music&&!MU.on)musicStart()}

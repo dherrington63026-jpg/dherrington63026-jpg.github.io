@@ -491,6 +491,7 @@ function resolve(){
   ccx/=kill.size;ccy/=kill.size;
   sfx.clear(nLines,Math.min(G.combo-1,4));
   rows.forEach(r=>fx.sweeps.push({row:true,i:r,t:0,dur:.42}));cols.forEach(c=>fx.sweeps.push({row:false,i:c,t:0,dur:.42}));
+  floatText(LW/2,262,"+"+nLines+(nLines>1?" LINES":" LINE")+(pureN?"  ("+pureN+" PURE)":""),"#ffe27a",44);
   fx.slow=.09+.02*Math.min(nLines,3);fx.punch=Math.max(fx.punch,.02+.012*Math.min(nLines,4));
   vib(pureN?[70,40,70,40,150]:nLines>1?[50,30,70]:[45,30,35]);
   ring(LW/2,BY+320,"rgba(255,255,255,.9)",380+80*nLines,.55,6);

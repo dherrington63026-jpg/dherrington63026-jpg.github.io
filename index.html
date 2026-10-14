@@ -187,7 +187,8 @@ let AC=null;
 function actx(){if(!AC){try{if(navigator.audioSession)navigator.audioSession.type="playback";AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return null}}if(AC.state==="suspended")AC.resume();return AC}
 function audio(){if(!opt.sound)return null;return actx()}
 /* ---- ambient music: soft pads, a warm bass and sparkly plucks, all generated live ---- */
-const MU={on:false,master:null,pad:null,timer:null,next:0,step:0};
+const MU={on:false,master:null,pad:null,timer:null,next:0,step:0,vol:.42};
+function duck(hold){if(!MU.on||!MU.master||!AC)return;const g=MU.master.gain,t=AC.currentTime,low=MU.vol*.22;g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(low,t+.04);g.setValueAtTime(low,t+Math.max(.15,hold));g.linearRampToValueAtTime(MU.vol,t+Math.max(.15,hold)+.9)}
 const mf=m=>440*Math.pow(2,(m-69)/12);
 const CHORDS=[[45,57,60,64],[41,53,57,60],[48,55,60,64],[43,55,59,62]];
 const PENT=[69,72,74,76,79,81,84];
@@ -204,13 +205,13 @@ function musicStart(){if(!opt.music||MU.on)return;const a=actx();if(!a)return;
   if(!MU.master){MU.master=a.createGain();MU.master.gain.value=0;MU.master.connect(a.destination);
     MU.pad=a.createBiquadFilter();MU.pad.type="lowpass";MU.pad.frequency.value=2600;MU.pad.connect(MU.master);
     MU.echo=a.createGain();MU.echo.connect(MU.master);const dl=a.createDelay(1);dl.delayTime.value=.63;const fb=a.createGain();fb.gain.value=.38;MU.echo.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(MU.master)}
-  MU.on=true;MU.next=a.currentTime+.1;MU.step=0;MU.master.gain.cancelScheduledValues(a.currentTime);MU.master.gain.setValueAtTime(MU.master.gain.value,a.currentTime);MU.master.gain.linearRampToValueAtTime(1.0,a.currentTime+2.0);
+  MU.on=true;MU.next=a.currentTime+.1;MU.step=0;MU.master.gain.cancelScheduledValues(a.currentTime);MU.master.gain.setValueAtTime(MU.master.gain.value,a.currentTime);MU.master.gain.linearRampToValueAtTime(MU.vol,a.currentTime+2.0);
   clearInterval(MU.timer);MU.timer=setInterval(musicTick,200);musicTick()}
 function musicStop(){if(!MU.on)return;MU.on=false;clearInterval(MU.timer);if(AC&&MU.master){MU.master.gain.cancelScheduledValues(AC.currentTime);MU.master.gain.setValueAtTime(MU.master.gain.value,AC.currentTime);MU.master.gain.linearRampToValueAtTime(0,AC.currentTime+.8)}}
-function unlockAudio(){const a=actx();if(a&&a.state!=="running")a.resume();if(opt.music&&!MU.on)musicStart()}
+function unlockAudio(){const a=actx();if(!a)return;try{a.resume();const b=a.createBuffer(1,1,22050),sr=a.createBufferSource();sr.buffer=b;sr.connect(a.destination);sr.start(0)}catch(e){}if(opt.music&&!MU.on)musicStart()}
 ["pointerup","touchend","click","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));
 document.addEventListener("visibilitychange",()=>{if(!AC)return;if(document.hidden){AC.suspend()}else{AC.resume()}});
-function tone(f,d,type="sine",v=.15,f2=null,delay=0){const a=audio();if(!a)return;const t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();
+function tone(f,d,type="sine",v=.15,f2=null,delay=0){const a=audio();if(!a)return;duck(delay+Math.min(d,.6));const t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();
   o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(a.destination);o.start(t);o.stop(t+d+.05)}
 const sfx={

@@ -424,8 +424,8 @@ function designKeyFor(wk){if(SCHEDULE[wk])return SCHEDULE[wk];const n=Math.round
 function applyDesign(b,key){const d=DESIGNS[key],w=Math.max(...d.rows.map(r=>r.length)),ox=Math.floor((N-w)/2);let n=0;d.rows.forEach((row,i)=>[...row].forEach((ch,j)=>{if(DCOL[ch]!==undefined){b[i+1][j+ox]=DCOL[ch];n++}}));return n}
 function designTitle(key){const d=DESIGNS[key];return d.emoji+" "+d.name}
 function stageCfg(n){
-  return{kind:"stage",n,colors:n<=1?1:n<=4?2:n<=8?3:n<=14?4:5,stones:n<5?0:Math.min(2+Math.floor((n-5)*.8),10),
-    goalLines:2+Math.floor((n-1)*.6),goalPure:n<2?0:Math.min(1+Math.floor((n-2)/3),5),hard:Math.min(1,Math.max(0,(n-6)/24)),bias:Math.max(0,.9-n*.045)}}
+  return{kind:"stage",n,colors:n<=1?1:n<=4?2:n<=8?3:n<=14?4:5,stones:n<5?0:Math.min(2+Math.floor((n-5)*.4),6),
+    goalLines:Math.min(2+Math.floor((n-1)*.4),20),goalPure:n<2?0:Math.min(1+Math.floor((n-2)/8),2),hard:Math.min(.5,Math.max(0,(n-6)/40)),bias:Math.max(.3,.9-n*.04)}}
 function dailyCfg(d){const rg=mulberry(hash("cfg|"+d));
   return{kind:"daily",colors:5,stones:0,size:10,design:designKeyFor(d),goalLines:10+Math.floor(rg()*3),goalPure:2,hard:1,bias:.3}}
 function prefillBoard(b,cfg,seed){const rg=mulberry(hash(seed));let n=cfg.stones,guard=0;
@@ -442,9 +442,9 @@ const lvStars=(L,t)=>(PROG[L]&&PROG[L][t])||0;
 function totalStars(){let n=0;for(const L in PROG)PROG[L].forEach(v=>n+=v||0);return n}
 function maxLevel(){let L=1;while(L<MAXLV&&lvStars(L,0)>0)L++;return L}
 function tierOpen(L,t){return L<=maxLevel()&&(t===0||lvStars(L,t-1)>0)}
-function levelCfg(L,t){const idx=t===0?Math.max(1,L-1):t===1?L+1:L+7,c=stageCfg(idx);c.level=L;c.tier=t;c.idx=idx;c.n=L;
+function levelCfg(L,t){const idx=t===0?Math.max(1,L-1):t===1?L+1:L+4,c=stageCfg(idx);c.level=L;c.tier=t;c.idx=idx;c.n=L;
   if(t===0){c.goalLines=Math.max(2,c.goalLines-1);c.goalPure=Math.max(0,c.goalPure-1);c.bias=Math.min(.95,c.bias+.12);c.stones=Math.max(0,c.stones-2)}
-  if(t===2){c.goalLines+=1;c.goalPure=Math.min(6,c.goalPure+1);c.bias=c.bias*.6;c.stones=Math.min(12,c.stones+1)}
+  if(t===2){c.goalLines=Math.min(24,c.goalLines+2);c.goalPure=Math.min(3,c.goalPure+1);c.bias=c.bias*.75;c.stones=Math.min(7,c.stones+1)}
   return c}
 // Booster rewards are small and only for FIRST clears, so players run out and may choose to buy more later
 function levelRewards(L,t,firstClear,stars,prevStars){const got=[];

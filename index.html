@@ -114,7 +114,8 @@
 <script>
 "use strict";
 /* ============ constants ============ */
-const LW=720, LH=1280, N=8, CELL=80, BX=40, BY=262;
+const LW=720, LH=1280, BX=40, BY=262;
+let N=8, CELL=80;
 const TRAY_Y=1075, TRAY_CELL=40, LIFT=120, FGAP=70;
 const COLORS=[
  {name:"red",   light:"#ff9aa9", base:"#ff3d5a", dark:"#a8123a", glow:"255,61,90",  emoji:"🟥"},
@@ -292,37 +293,37 @@ function cellXY(r,c){return[BX+c*CELL,BY+r*CELL]}
 
 /* ============ weekly picture designs (r=red b=blue g=green y=yellow p=purple s=stone) ============ */
 const DESIGNS={
- apple:{name:"Apple",emoji:"🍎",rows:["...g...",".rr.rr.","rrryrrr","rrrrryr",".rrrrr.","..r.r.."]},
- leaf:{name:"Autumn Leaf",emoji:"🍂",rows:["...r...","..rrr..",".ryyyr.","rrryrrr","..ryr..","...y..."]},
- pumpkin:{name:"Pumpkin",emoji:"🎃",rows:["...g...",".yyyyy.","yy.y.yy","yyyryyy","y.yyy.y","..yyy.."]},
- corn:{name:"Corn",emoji:"🌽",rows:["..yyy..",".gyyyg.",".gyyyg.","..yyy..","...g..."]},
- pie:{name:"Pumpkin Pie",emoji:"🥧",rows:[".yyyyy.","yrrprry","yrprpry",".yyyyy."]},
- yam:{name:"Yams",emoji:"🍠",rows:["...g...","..ppp..",".pprpp.",".ppprp.","..pppp.","...pp.."]},
- turkey:{name:"Turkey",emoji:"🦃",rows:["r.y.g.b",".rygyb.","..rrr..",".rrrrr.",".rryrr.","..y.y.."]},
- gingerbread:{name:"Gingerbread",emoji:"🍪",rows:["..yyy..","..yby..","yyyryyy","..yry..","..yyy..",".yy.yy."]},
- tree:{name:"Christmas Tree",emoji:"🎄",rows:["...y...","..ggg..",".grggb.","ggggrgg","...s..."]},
- santa:{name:"Santa",emoji:"🎅",rows:["....s..","..rrr..",".rrrrr.",".sssss.",".ybyby.","..rrr.."]},
- reindeer:{name:"Reindeer",emoji:"🦌",rows:["g.....g",".g...g.","..yyy..",".yyyyy.",".ybyby.","..yry..","...y..."]},
- snowman:{name:"Snowman",emoji:"⛄",rows:["..ppp..","..bbb..",".bbbbb.",".bbybb.",".bbbbb.","..bbb.."]},
- heart:{name:"Heart",emoji:"❤️",rows:[".rr.rr.","rprprpr","rrprprr",".rprpr.","..rpr..","...r..."]},
- star:{name:"Star",emoji:"⭐",rows:["...y...","..yby..","yybbbyy",".ybbby.","..y.y..",".y...y."]},
- fish:{name:"Fish",emoji:"🐟",rows:["..bbb..",".bybbb.","bbbbbby",".bbbbb.","..bbb.."]},
- flower:{name:"Flower",emoji:"🌸",rows:["..r.r..",".rpypr.","..rpr..","...g...","..g.g.."]},
- rocket:{name:"Rocket",emoji:"🚀",rows:["...r...","..rrr..","..rbr..","..rrr..",".rrrrr.",".y.y.y."]},
- cat:{name:"Cat",emoji:"🐱",rows:[".p...p.",".ppppp.",".pbpbp.",".ppypp.","..ppp.."]}
+ apple:{name:"Apple",emoji:"🍎",rows:["....g...", "...gg...", ".rr.rrr.", "rryrrrrr", "ryrrrrpp", "rrrrrrrp", ".rrrrrp.", "..rr.rr."]},
+ leaf:{name:"Autumn Leaf",emoji:"🍂",rows:["...y....", "..yry...", ".yrrry..", "rrryrrr.", "rrryrrrr", ".rryrrr.", "..rrrr..", "...y...."]},
+ pumpkin:{name:"Pumpkin",emoji:"🎃",rows:["...gg...", ".yyyyyy.", "yyryyryy", "yyyyyyyy", "yryyyyry", ".yrrrry.", "..yyyy.."]},
+ corn:{name:"Corn",emoji:"🌽",rows:["...yy...", "..yyyy..", ".gyyyyg.", ".gyyyyg.", "..yyyy..", "..gyyg..", "...gg...", "...g...."]},
+ pie:{name:"Pumpkin Pie",emoji:"🥧",rows:["..yyyy..", ".yrprry.", "yrprprpy", "yprrprry", ".yrprry.", "..yyyy.."]},
+ yam:{name:"Yams",emoji:"🍠",rows:["...gg...", "..pppp..", ".pprppp.", "pppppprp", "pprpppp.", ".ppppp..", "..ppp...", "...p...."]},
+ turkey:{name:"Turkey",emoji:"🦃",rows:["ry.gb.yr", ".rygbyr.", "rygbbgyr", ".ygrrgy.", "..rrrr..", "..rpyr..", "...yy...", "..y..y.."]},
+ gingerbread:{name:"Gingerbread",emoji:"🍪",rows:["..yyyy..", "..ybyy..", "yyyyyyyy", "..yryy..", "..yyyy..", "..yryy..", ".yy..yy.", ".yy..yy."]},
+ tree:{name:"Christmas Tree",emoji:"🎄",rows:["...y....", "...gg...", "..grgg..", ".gggrgg.", "..gggg..", ".ggrgggg", "gggggrgg", "...ss..."]},
+ santa:{name:"Santa",emoji:"🎅",rows:["....ss..", "..rrrr..", ".rrrrrr.", ".ssssss.", ".ybyyby.", ".yyyryy.", "..ssss..", "...ss..."]},
+ reindeer:{name:"Reindeer",emoji:"🦌",rows:["y......y", "yy....yy", ".yyyyyy.", ".ybyyby.", ".yyyyyy.", "..yyyy..", "...rr..."]},
+ snowman:{name:"Snowman",emoji:"⛄",rows:["..pppp..", "..bbbb..", ".bbbbbb.", ".bsbbsb.", ".bbyybb.", "..bbbb..", ".bbbbbb.", "bbbbbbbb"]},
+ heart:{name:"Heart",emoji:"❤️",rows:[".rr..rr.", "rrrrrrrr", "rrprrrpr", "rrrrrrrr", ".rrrrrr.", "..rrrr..", "...rr..."]},
+ star:{name:"Star",emoji:"⭐",rows:["...yy...", "...yy...", "yyyyyyyy", ".yyyyyy.", "..yyyy..", ".yyyyyy.", "yy....yy"]},
+ fish:{name:"Fish",emoji:"🐟",rows:["..bbb...", ".bbbbb.b", "bbybbbbb", "bbbbbbbb", ".bbbbb.b", "..bbb..."]},
+ flower:{name:"Flower",emoji:"🌸",rows:["..r..r..", ".rrrrrr.", "rrryyrrr", ".rryyrr.", "..rrrr..", "...g....", ".g.g.g..", "..ggg..."]},
+ rocket:{name:"Rocket",emoji:"🚀",rows:["...rr...", "..rrrr..", "..rbbr..", "..rbbr..", ".rrrrrr.", "rr.rr.rr", "...yy...", "..y..y.."]},
+ cat:{name:"Cat",emoji:"🐱",rows:["p..pp..p", "pppppppp", "pbpppbpp", "ppppyppp", "pppppppp", ".pppppp."]}
 };
 const SCHEDULE={"2026-10-12":"apple","2026-10-19":"leaf","2026-10-26":"pumpkin","2026-11-02":"corn","2026-11-09":"pie","2026-11-16":"yam","2026-11-23":"turkey",
  "2026-11-30":"gingerbread","2026-12-07":"tree","2026-12-14":"santa","2026-12-21":"reindeer","2026-12-28":"snowman"};
 const GENERIC=["heart","star","fish","flower","rocket","cat"];
 const DCOL={r:0,b:1,g:2,y:3,p:4,s:5};
 function designKeyFor(wk){if(SCHEDULE[wk])return SCHEDULE[wk];const n=Math.round((new Date(wk+"T12:00:00")-new Date("2026-12-28T12:00:00"))/(7*864e5));return GENERIC[((n%GENERIC.length)+GENERIC.length)%GENERIC.length]}
-function applyDesign(b,key){const d=DESIGNS[key];let n=0;d.rows.forEach((row,i)=>[...row].forEach((ch,j)=>{if(DCOL[ch]!==undefined){b[i+1][j]=DCOL[ch];n++}}));return n}
+function applyDesign(b,key){const d=DESIGNS[key],w=Math.max(...d.rows.map(r=>r.length)),ox=Math.floor((N-w)/2);let n=0;d.rows.forEach((row,i)=>[...row].forEach((ch,j)=>{if(DCOL[ch]!==undefined){b[i+1][j+ox]=DCOL[ch];n++}}));return n}
 function designTitle(key){const d=DESIGNS[key];return d.emoji+" "+d.name}
 function stageCfg(n){
   return{kind:"stage",n,colors:n<=1?1:n<=4?2:n<=8?3:n<=14?4:5,stones:n<5?0:Math.min(2+Math.floor((n-5)*.8),10),
     goalLines:2+Math.floor((n-1)*.6),goalPure:n<2?0:Math.min(1+Math.floor((n-2)/3),5),hard:Math.min(1,Math.max(0,(n-6)/24)),bias:Math.max(0,.9-n*.045)}}
 function dailyCfg(d){const rg=mulberry(hash("cfg|"+d));
-  return{kind:"daily",colors:5,stones:0,design:designKeyFor(d),goalLines:10+Math.floor(rg()*3),goalPure:2+(rg()<.5?1:0),hard:1,bias:.15}}
+  return{kind:"daily",colors:5,stones:0,size:10,design:designKeyFor(d),goalLines:10+Math.floor(rg()*3),goalPure:2,hard:1,bias:.3}}
 function prefillBoard(b,cfg,seed){const rg=mulberry(hash(seed));let n=cfg.stones,guard=0;
   const rowC=Array(N).fill(0),colC=Array(N).fill(0);
   while(n>0&&guard++<600){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]!==null||rowC[r]>=3||colC[c]>=3)continue;
@@ -333,10 +334,11 @@ function startGame(mode,stage){
   if(mode==="stage"){const n=stage||stageNow();cfg=stageCfg(n);const rt=(startGame.retry&&startGame.retry.n===n)?startGame.retry.r:0;seedBase="stage"+n+"r"+rt}
   else if(mode==="daily"){cfg=dailyCfg(d);seedBase="huezel-"+d}
   else cfg={kind:"classic",colors:4,stones:0,goalLines:0,goalPure:0,hard:0,bias:0};
+  N=cfg.size||8;CELL=640/N;
   G={mode,cfg,board:newBoard(),score:0,shown:0,best:+store("hz_best_"+mode)||0,combo:0,bestCombo:0,pure:0,lines:0,placed:0,turn:0,pieces:[],drag:null,
      undo:null,undoUsed:false,date:d,over:false,won:false,overT:0,seedBase,lastScoreAnim:0};
   if(cfg.stones)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
-  if(cfg.design)applyDesign(G.board,cfg.design);
+  if(cfg.design){applyDesign(G.board,cfg.design);G.pre=copyBoard(G.board)}
   G.startFill=G.board.flat().filter(v=>v!==null).length;
   nextSet();state="play";hide("menu");hide("over");sfx.start();showIntro()}
 function seedFn(){return a=>G.mode!=="classic"?mulberry(hash(G.seedBase+"|"+G.turn+"|"+a)):Math.random}
@@ -574,6 +576,7 @@ function previewInfo(){ // ghost + completing lines
   return{t,p,lines}}
 function lineCues(){const B=G.board,cues=[];
   const check=(arr,isRow,i)=>{let col=-1,k=0;for(const v of arr){if(v===null)continue;if(v===5)return;if(col===-1)col=v;else if(v!==col)return;k++}
+    if(G.pre){let own=false;for(let j=0;j<N;j++){const rr_=isRow?i:j,cc_=isRow?j:i;if(B[rr_][cc_]!==null&&G.pre[rr_][cc_]!==B[rr_][cc_])own=true}if(!own)return}
     if(k>=2&&k<N)cues.push({isRow,i,col,k})};
   for(let r=0;r<N;r++)check(B[r],true,r);
   for(let c=0;c<N;c++){const a=[];for(let r=0;r<N;r++)a.push(B[r][c]);check(a,false,c)}

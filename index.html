@@ -798,13 +798,14 @@ function render(){
   // rings
   fx.rings.forEach(r=>{const u=r.life/r.dur,e=1-Math.pow(1-u,3);ctx.save();ctx.globalAlpha=1-u;ctx.strokeStyle=r.col;ctx.lineWidth=r.w*(1-u)+1;ctx.shadowColor=r.col;ctx.shadowBlur=30;
     ctx.beginPath();ctx.arc(r.x,r.y,10+(r.max-10)*e,0,6.3);ctx.stroke();ctx.restore()});
-  tipBar(pv);targetOverlay();boosterBar();
+  tipBar(pv);boosterBar();
   // tray
   ctx.fillStyle="rgba(255,255,255,.05)";rr(30,TRAY_Y-120,660,240,34);ctx.fill();
   ctx.strokeStyle="rgba(255,255,255,.12)";ctx.lineWidth=2;rr(30,TRAY_Y-120,660,240,34);ctx.stroke();
   G.pieces.forEach(p=>{if(p.used||p.t<0)return;if(G.drag&&G.drag.p===p)return;drawPiece(p);
     if(G.cues&&G.cues.some(q=>q.col===p.color&&q.k>=3)){const pu=.6+.4*Math.sin(bgT*6),[sx,sy]=slotCenter(p.slot);ctx.save();ctx.fillStyle="#ffe27a";ctx.shadowColor="#ffd96a";ctx.shadowBlur=18*pu;ctx.font="900 40px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.globalAlpha=.6+.4*pu;ctx.fillText("★",sx,sy-100);ctx.restore()}});
   if(G.drag)drawPiece(G.drag.p,true);
+  targetOverlay();
   // particles
   fx.parts.forEach(p=>{const a=1-p.life/p.max;ctx.save();ctx.globalAlpha=a;ctx.translate(p.x,p.y);ctx.rotate(p.rot);
     ctx.shadowColor=p.col;ctx.shadowBlur=14;ctx.fillStyle=p.col;if(p.star){ctx.beginPath();for(let k=0;k<8;k++){const a=k*.7854,q=(k%2?.25:1)*p.size;ctx.lineTo(Math.cos(a)*q,Math.sin(a)*q)}ctx.closePath();ctx.fill()}else{rr(-p.size/2,-p.size/2,p.size,p.size,p.size*.25);ctx.fill()}ctx.restore()});
@@ -851,15 +852,18 @@ if("serviceWorker" in navigator&&location.protocol.startsWith("http")){addEventL
 (function(){const q=new URLSearchParams(location.search).get("shot");if(!q)return;opt.sound=false;opt.music=false;
   const fill=(r,c0,c1,col)=>{for(let c=c0;c<=c1;c++)G.board[r][c]=col};
   const setP=(i,cells,w,h,col)=>{G.pieces[i].s={cells,w,h,n:cells.length};G.pieces[i].color=col;G.pieces[i].t=2;G.pieces[i].sc=TRAY_CELL/CELL;const[x,y]=slotCenter(i);G.pieces[i].x=x;G.pieces[i].y=y};
-  if(q==="menu"){return}
-  if(q==="intro"){startGame("stage",2);return}
-  if(q==="stage"){startGame("stage",3);hide("intro");fill(1,0,5,1);fill(4,0,2,0);fill(4,5,5,0);fill(5,1,3,1);fill(6,0,1,0);fill(6,6,7,1);G.board[3][7]=1;G.board[2][7]=1;
+  if(q==="menu"){PROG={1:[3,2,1],2:[2,1,0],3:[2,1,0],4:[1,0,0]};BO={paint:3,hammer:2,shuffle:2,rewind:4};refreshMenu();return}
+  if(q==="map"){PROG={1:[3,3,2],2:[3,2,1],3:[2,2,1],4:[2,1,0],5:[1,0,0]};openMap();return}
+  if(q==="boost"){startGame("stage",6,1);hide("intro");BO={paint:3,hammer:2,shuffle:2,rewind:4};fill(2,1,3,0);fill(3,1,3,0);fill(2,4,4,1);fill(3,4,4,2);fill(5,0,2,1);fill(5,3,4,2);G.board[6][6]=5;G.board[4][2]=0;
+    G.tgt={k:"paint",step:1,sel:[[2,1],[2,2],[2,3],[3,1],[3,2]]};G.score=1180;G.shown=1180;G.lines=3;return}
+  if(q==="intro"){startGame("stage",2,1);return}
+  if(q==="stage"){startGame("stage",3,1);hide("intro");fill(1,0,5,1);fill(4,0,2,0);fill(4,5,5,0);fill(5,1,3,1);fill(6,0,1,0);fill(6,6,7,1);G.board[3][7]=1;G.board[2][7]=1;
     setP(0,[[0,0],[0,1]],2,1,1);setP(1,[[0,0],[1,0],[1,1]],2,2,0);setP(2,[[0,0],[1,0],[2,0]],1,3,1);G.score=840;G.shown=840;G.lines=2;return}
-  if(q==="stones"){startGame("stage",8);hide("intro");G.board[0][3]=1;G.board[1][3]=1;G.board[2][3]=1;G.board[3][3]=1;G.board[4][3]=1;G.board[5][3]=1;fill(7,0,4,2);fill(6,5,7,0);fill(6,0,1,0);
+  if(q==="stones"){startGame("stage",7,1);hide("intro");G.board[0][3]=1;G.board[1][3]=1;G.board[2][3]=1;G.board[3][3]=1;G.board[4][3]=1;G.board[5][3]=1;fill(7,0,4,2);fill(6,5,7,0);fill(6,0,1,0);
     setP(0,[[0,0],[1,0]],1,2,1);setP(1,[[0,0],[0,1],[0,2]],3,1,2);setP(2,[[0,0],[1,0],[1,1],[1,2]],3,2,0);G.score=2310;G.shown=2310;G.lines=3;G.pure=1;return}
   if(q==="weekly"){startGame("daily");hide("intro");fill(2,0,3,3);fill(3,0,3,3);fill(5,2,6,4);fill(6,0,4,1);G.board[7][7]=0;
     setP(0,[[0,0],[1,0],[1,1]],2,2,3);setP(1,[[0,0],[0,1],[0,2],[0,3]],4,1,1);setP(2,[[0,0],[1,0]],1,2,4);G.score=1520;G.shown=1520;G.lines=4;G.pure=1;return}
-  if(q==="pure"){startGame("stage",6);hide("intro");fill(0,0,6,1);fill(1,7,7,1);fill(2,7,7,1);fill(3,2,3,1);fill(5,0,3,2);fill(6,4,6,0);
+  if(q==="pure"){startGame("stage",6,1);hide("intro");fill(0,0,6,1);fill(1,7,7,1);fill(2,7,7,1);fill(3,2,3,1);fill(5,0,3,2);fill(6,4,6,0);
     setP(0,[[0,0]],1,1,1);setP(1,[[0,0],[0,1]],2,1,2);setP(2,[[0,0],[1,0]],1,2,0);G.score=1200;G.shown=1200;
     setTimeout(()=>place(G.pieces[0],0,7),250);return}
 })();

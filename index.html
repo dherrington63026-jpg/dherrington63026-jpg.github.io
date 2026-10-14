@@ -63,6 +63,7 @@
   <input class="name" id="nameIn" maxlength="14" placeholder="Your name (shown when you share)">
   <div class="row">
     <button class="chip" id="tSound">Sound: on</button>
+    <button class="chip" id="tMusic">Music: on</button>
     <button class="chip off" id="tCB">Color-blind symbols: off</button>
   </div>
   <button class="chip" id="bHow">How to play</button>
@@ -172,7 +173,7 @@ const cv=$("c"),ctx=cv.getContext("2d");
 let W=0,H=0,DPR=1,VS=1,OX=0,OY=0;
 let state="menu"; // menu | play | over
 let G=null;
-const opt={sound:store("hz_sound")!=="0",cb:store("hz_cb")==="1"};
+const opt={sound:store("hz_sound")!=="0",music:store("hz_music")!=="0",cb:store("hz_cb")==="1"};
 const fx={parts:[],floats:[],rings:[],cells:[],shake:0,flash:0,flashCol:"255,255,255"};
 let bgT=0,stars=[],orbs=[],menuBlocks=[];
 function resize(){DPR=Math.min(window.devicePixelRatio||1,2.5);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;
@@ -183,7 +184,30 @@ for(let i=0;i<5;i++)orbs.push({c:COLORS[i%4].glow,x:rnd(0,1),y:rnd(0,1),r:rnd(.3
 for(let i=0;i<14;i++)menuBlocks.push({x:rnd(0,LW),y:rnd(0,LH),v:rnd(18,50),c:i%4,sz:rnd(36,90),rot:rnd(-.5,.5),vr:rnd(-.3,.3)});
 /* ============ audio ============ */
 let AC=null;
-function audio(){if(!opt.sound)return null;if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return null}}if(AC.state==="suspended")AC.resume();return AC}
+function actx(){if(!AC){try{if(navigator.audioSession)navigator.audioSession.type="playback";AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return null}}if(AC.state==="suspended")AC.resume();return AC}
+function audio(){if(!opt.sound)return null;return actx()}
+/* ---- ambient music: soft pads, a warm bass and sparkly plucks, all generated live ---- */
+const MU={on:false,master:null,pad:null,timer:null,next:0,step:0};
+const mf=m=>440*Math.pow(2,(m-69)/12);
+const CHORDS=[[45,57,60,64],[41,53,57,60],[48,55,60,64],[43,55,59,62]];
+const PENT=[69,72,74,76,79,81,84];
+function mnote(t,freq,dur,type,vol,dest,attack=.01){const a=AC,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+attack);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g).connect(dest);o.start(t);o.stop(t+dur+.1)}
+function musicTick(){if(!MU.on||!AC)return;const spb=.42;
+  while(MU.next<AC.currentTime+.9){const t=MU.next,st=MU.step%32,ch=CHORDS[Math.floor(st/8)];
+    if(st%8===0){ch.forEach((m,i)=>{mnote(t,mf(m),3.3,"sine",.035,MU.pad,1.0);mnote(t,mf(m)*1.003,3.3,"triangle",.012,MU.pad,1.2)});mnote(t,mf(ch[0]-12),3.0,"sine",.09,MU.master,.05)}
+    if(st%4===0&&Math.random()<.8)mnote(t,mf(ch[0]),.5,"sine",.05,MU.master,.01);
+    if(Math.random()<.5){const m=PENT[Math.floor(Math.random()*PENT.length)];mnote(t+(Math.random()<.5?0:spb/2),mf(m),1.1,"triangle",.03,MU.echo,.005)}
+    MU.next+=spb;MU.step++}}
+function musicStart(){if(!opt.music||MU.on)return;const a=actx();if(!a)return;
+  if(!MU.master){MU.master=a.createGain();MU.master.gain.value=0;MU.master.connect(a.destination);
+    MU.pad=a.createBiquadFilter();MU.pad.type="lowpass";MU.pad.frequency.value=1100;MU.pad.connect(MU.master);
+    MU.echo=a.createGain();MU.echo.connect(MU.master);const dl=a.createDelay(1);dl.delayTime.value=.63;const fb=a.createGain();fb.gain.value=.38;MU.echo.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(MU.master)}
+  MU.on=true;MU.next=a.currentTime+.1;MU.step=0;MU.master.gain.cancelScheduledValues(a.currentTime);MU.master.gain.setValueAtTime(MU.master.gain.value,a.currentTime);MU.master.gain.linearRampToValueAtTime(.8,a.currentTime+2.5);
+  clearInterval(MU.timer);MU.timer=setInterval(musicTick,200);musicTick()}
+function musicStop(){if(!MU.on)return;MU.on=false;clearInterval(MU.timer);if(AC&&MU.master){MU.master.gain.cancelScheduledValues(AC.currentTime);MU.master.gain.setValueAtTime(MU.master.gain.value,AC.currentTime);MU.master.gain.linearRampToValueAtTime(0,AC.currentTime+.8)}}
+document.addEventListener("pointerdown",()=>{if(opt.music&&!MU.on)musicStart()},{passive:true});
+document.addEventListener("visibilitychange",()=>{if(!AC)return;if(document.hidden){AC.suspend()}else{AC.resume()}});
 function tone(f,d,type="sine",v=.15,f2=null,delay=0){const a=audio();if(!a)return;const t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();
   o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(a.destination);o.start(t);o.stop(t+d+.05)}
@@ -384,9 +408,11 @@ $("bDaily").onclick=()=>{store("hz_name",$("nameIn").value);startGame("daily")};
 $("bAgain").onclick=()=>startGame(G.mode,G.mode==="stage"?G.cfg.n:undefined);
 $("bMenu").onclick=()=>{state="menu";hide("over");show("menu");refreshMenu()};
 $("bHow").onclick=()=>{hide("menu");show("how")};$("bHowOk").onclick=()=>{hide("how");show("menu")};
+$("tMusic").onclick=()=>{opt.music=!opt.music;store("hz_music",opt.music?"1":"0");syncOpts();if(opt.music)musicStart();else musicStop()};
 $("tSound").onclick=()=>{opt.sound=!opt.sound;store("hz_sound",opt.sound?"1":"0");syncOpts();if(opt.sound)sfx.pick()};
 $("tCB").onclick=()=>{opt.cb=!opt.cb;store("hz_cb",opt.cb?"1":"0");syncOpts()};
-function syncOpts(){$("tSound").textContent="Sound: "+(opt.sound?"on":"off");$("tSound").classList.toggle("off",!opt.sound);
+function syncOpts(){$("tMusic").textContent="Music: "+(opt.music?"on":"off");$("tMusic").classList.toggle("off",!opt.music);
+  $("tSound").textContent="Sound: "+(opt.sound?"on":"off");$("tSound").classList.toggle("off",!opt.sound);
   $("tCB").textContent="Color-blind symbols: "+(opt.cb?"on":"off");$("tCB").classList.toggle("off",!opt.cb)}
 $("bShare").onclick=async()=>{const t=shareText();
   try{if(navigator.share){await navigator.share({text:t});return}}catch(e){}
@@ -534,7 +560,7 @@ function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearG
 requestAnimationFrame(frame);
 if("serviceWorker" in navigator&&location.protocol.startsWith("http")){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 /* screenshot scenes for store listing (only used with ?shot=name) */
-(function(){const q=new URLSearchParams(location.search).get("shot");if(!q)return;opt.sound=false;
+(function(){const q=new URLSearchParams(location.search).get("shot");if(!q)return;opt.sound=false;opt.music=false;
   const fill=(r,c0,c1,col)=>{for(let c=c0;c<=c1;c++)G.board[r][c]=col};
   const setP=(i,cells,w,h,col)=>{G.pieces[i].s={cells,w,h,n:cells.length};G.pieces[i].color=col;G.pieces[i].t=2;G.pieces[i].sc=TRAY_CELL/CELL;const[x,y]=slotCenter(i);G.pieces[i].x=x;G.pieces[i].y=y};
   if(q==="menu"){return}

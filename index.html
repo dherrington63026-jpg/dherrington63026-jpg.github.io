@@ -497,7 +497,7 @@ function resolve(){
   ring(LW/2,BY+320,"rgba(255,255,255,.9)",380+80*nLines,.55,6);
   if(pureN){sfx.pure();fx.shake=Math.max(fx.shake,.9);fx.flash=.6;fx.slow=.2;fx.punch=.07;fx.flashCol=COLORS[lines.find(l=>l.pure).col].glow;
     lines.filter(L=>L.pure).forEach(L=>{const[x,y]=cellXY(L.cells[3][0],L.cells[3][1]);ring(x+CELL,y+CELL/2,COLORS[L.col].light,820,.9,16);ring(x+CELL,y+CELL/2,"#fff",560,.6,8)});
-    floatText(LW/2,BY+300,"PURE CLEAR!",COLORS[lines.find(l=>l.pure).col].light,84);
+    floatText(LW/2,BY+300,pureN>1?"PURE CLEAR x"+pureN+"!":"PURE CLEAR!",COLORS[lines.find(l=>l.pure).col].light,84);
     if(blobN)floatText(LW/2,BY+370,"+"+blobN+" chain","#ffffff",40)}
   else{fx.shake=Math.max(fx.shake,.3+.12*nLines)}
   floatText(ccx,ccy,"+"+pts,"#fff",56+nLines*6);
@@ -779,7 +779,7 @@ function hud(){
   const sc=Math.round(G.shown).toLocaleString();const pulse=1+Math.min(.12,Math.abs(G.score-G.shown)/4000);
   ctx.save();ctx.translate(LW/2,142);ctx.scale(pulse,pulse);ctx.strokeText(sc,0,0);
   const tg=ctx.createLinearGradient(0,-50,0,50);tg.addColorStop(0,"#fff");tg.addColorStop(1,"#ffd96a");ctx.shadowColor="rgba(255,200,80,.55)";ctx.shadowBlur=26;ctx.fillStyle=tg;ctx.fillText(sc,0,0);ctx.restore();
-  if(G.cfg.kind==="classic"){ctx.font="700 22px 'Segoe UI',system-ui,sans-serif";ctx.fillStyle="rgba(255,255,255,.65)";ctx.fillText("BEST "+Math.max(G.best,G.score).toLocaleString(),LW/2,214)}
+  if(G.cfg.kind==="classic"){ctx.font="700 22px 'Segoe UI',system-ui,sans-serif";ctx.fillStyle="rgba(255,255,255,.65)";ctx.fillText("BEST "+Math.max(G.best,G.score).toLocaleString()+"   ·   LINES "+G.lines+"   ·   PURE "+G.pure,LW/2,214)}
   else{const items=[["LINES",Math.min(G.lines,G.cfg.goalLines),G.cfg.goalLines]];if(G.cfg.goalPure)items.push(["PURE",Math.min(G.pure,G.cfg.goalPure),G.cfg.goalPure]);
     const pw=230,gap=20,tot=items.length*pw+(items.length-1)*gap;items.forEach((it,i)=>{const x=LW/2-tot/2+i*(pw+gap),y=196,done=it[1]>=it[2];
       ctx.save();ctx.fillStyle="rgba(10,6,40,.6)";rr(x,y,pw,40,20);ctx.fill();ctx.save();rr(x,y,pw,40,20);ctx.clip();

@@ -194,12 +194,19 @@ const CHORDS=[[45,57,60,64],[41,53,57,60],[48,55,60,64],[43,55,59,62]];
 const PENT=[69,72,74,76,79,81,84];
 function mnote(t,freq,dur,type,vol,dest,attack=.01){const a=AC,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=freq;
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+attack);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g).connect(dest);o.start(t);o.stop(t+dur+.1)}
-function musicTick(){if(!MU.on||!AC)return;const spb=.42;
-  while(MU.next<AC.currentTime+.9){const t=MU.next,st=MU.step%32,ch=CHORDS[Math.floor(st/8)];
+function dangerNow(){if(typeof G==="undefined"||!G||state!=="play"||G.over)return 0;let f=0,top=N;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(G.board[r][c]!==null){f++;if(r<top)top=r}
+  const fill=f/(N*N),tall=(N-top)/N;return clamp(Math.max((fill-.4)/.4,(tall-.55)/.35),0,1)}
+MU.danger=0;
+function musicTick(){if(!MU.on||!AC)return;MU.danger+=(dangerNow()-MU.danger)*.4;
+  while(MU.next<AC.currentTime+.9){const dg=MU.danger,spb=.42-.17*dg,t=MU.next,st=MU.step%32,ch=CHORDS[Math.floor(st/8)];
     if(st%8===0){ch.forEach((m,i)=>{mnote(t,mf(m+12),3.4,"sine",.07,MU.pad,.9);mnote(t,mf(m+24)*1.002,3.4,"triangle",.03,MU.pad,1.1)});
-      mnote(t,mf(ch[0]),3.0,"sine",.12,MU.master,.05);mnote(t,mf(ch[0]+12),3.0,"triangle",.05,MU.master,.05)}
+      mnote(t,mf(ch[0]),3.0,"sine",.12,MU.master,.05);mnote(t,mf(ch[0]+12),3.0,"triangle",.05,MU.master,.05);
+      if(dg>.45)mnote(t,mf(ch[0]+30),spb*7,"triangle",.05*dg,MU.pad,.3)}
     if(st%2===0&&Math.random()<.85){const m=ch[(st/2|0)%4]+24;mnote(t,mf(m),.7,"triangle",.07,MU.echo,.01);mnote(t,mf(m+12),.5,"sine",.025,MU.echo,.01)}
-    if(Math.random()<.5){const m=PENT[Math.floor(Math.random()*PENT.length)];mnote(t+(Math.random()<.5?0:spb/2),mf(m),1.2,"triangle",.07,MU.echo,.005);mnote(t,mf(m+12),.8,"sine",.02,MU.echo,.005)}
+    if(Math.random()<.5+.4*dg){const m=PENT[Math.floor(Math.random()*PENT.length)];mnote(t+(Math.random()<.5?0:spb/2),mf(m),1.2,"triangle",.07,MU.echo,.005);mnote(t,mf(m+12),.8,"sine",.02,MU.echo,.005)}
+    if(dg>.3)mnote(t,mf(79),.1,"triangle",.07*dg,MU.master,.003);
+    if(dg>.6&&st%2===1)mnote(t,mf(86),.08,"square",.025*dg,MU.master,.002);
     MU.next+=spb;MU.step++}}
 function musicStart(){if(!opt.music||MU.on)return;const a=actx();if(!a)return;
   if(!MU.master){MU.master=a.createGain();MU.master.gain.value=0;MU.master.connect(a.destination);

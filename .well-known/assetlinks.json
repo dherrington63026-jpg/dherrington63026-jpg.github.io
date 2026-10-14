@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.huezelgames.huezel",
+        "sha256_cert_fingerprints": ["42:2B:4E:6F:95:00:2B:CC:50:90:B5:38:8F:2D:E6:46:0E:D6:22:C0:1E:23:4D:7E:E2:9E:29:4F:8A:6E:EB:1D"]
+      }
+    }]

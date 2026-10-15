@@ -1,8 +1,15 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "com.huezelgames.huezel",
-        "sha256_cert_fingerprints": ["42:2B:4E:6F:95:00:2B:CC:50:90:B5:38:8F:2D:E6:46:0E:D6:22:C0:1E:23:4D:7E:E2:9E:29:4F:8A:6E:EB:1D"]
-      }
-    }]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.huezelgames.huezel",
+      "sha256_cert_fingerprints": [
+        "42:2B:4E:6F:95:00:2B:CC:50:90:B5:38:8F:2D:E6:46:0E:D6:22:C0:1E:23:4D:7E:E2:9E:29:4F:8A:6E:EB:1D",
+        "1D:95:57:7D:7F:E8:0C:CF:2F:D6:34:04:98:0B:68:A3:BE:87:59:1B:A3:C0:36:58:9A:B4:DD:E3:C9:BA:71:C4"
+      ]
+    }
+  }
+]

@@ -72,10 +72,14 @@
   .stats span{display:block;font-size:11px;font-weight:600;letter-spacing:.16em;opacity:.65;margin-top:2px}
   #toast{position:fixed;left:50%;top:27%;width:max-content;max-width:86vw;text-align:center;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:12px 20px;border-radius:14px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9}
   #toast.show{opacity:1}
+  #achBanner{position:fixed;left:50%;top:13%;width:max-content;max-width:90vw;transform:translateX(-50%) translateY(-24px);background:linear-gradient(180deg,#ffe27a,#ffc21a 60%,#d17a00);color:#3a2200;border:2px solid #fff1b0;padding:10px 18px;border-radius:18px;font-weight:900;text-align:center;opacity:0;transition:opacity .35s,transform .35s;pointer-events:none;z-index:10;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  #achBanner.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #achBanner small{display:block;font-weight:700;font-size:12px}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="achBanner"></div>
 
 <div class="screen show" id="menu">
   <div class="starpill" id="menuStars">★ 0</div>
@@ -96,7 +100,7 @@
     <button class="chip off" id="tCB">Color-blind symbols: off</button>
   </div>
   <div id="iosTip" style="display:none;max-width:320px;font-size:13px;font-weight:700;line-height:1.4;color:#ffe9a8;background:rgba(255,200,60,.12);border:1px solid rgba(255,226,122,.5);border-radius:14px;padding:8px 12px">Tip: tap Share, then Add to Home Screen, and play from the icon. Safari can erase saved progress from a web page!</div>
-  <div class="row"><button class="chip" id="bShop" style="border-color:#7ee8ff;color:#c8f2ff">🛍 Shop</button><button class="chip" id="bMis" style="border-color:#ffd96a;color:#ffe9a8">✨ Daily missions</button></div>
+  <div class="row"><button class="chip" id="bAch" style="border-color:#ffd96a;color:#ffe9a8">🏆 Trophies</button><button class="chip" id="bShop" style="border-color:#7ee8ff;color:#c8f2ff">🛍 Shop</button><button class="chip" id="bMis" style="border-color:#ffd96a;color:#ffe9a8">✨ Daily missions</button></div>
   <div class="row"><button class="chip" id="bHow">How to play</button><button class="chip" id="bSave">Save / restore progress</button></div>
 </div>
 
@@ -163,6 +167,16 @@
     <div style="font-size:12px;opacity:.7;margin-bottom:8px">Earn ✨ sparks from daily missions. Music packs are coming next!</div>
     <div id="shopList"></div>
     <button class="chip" id="bShopBack" style="margin-top:8px">Back</button>
+  </div>
+</div>
+
+<div class="screen" id="achScr">
+  <div class="panel" style="text-align:center;max-height:92vh;overflow:auto;width:min(92vw,380px)">
+    <div class="lbl">Trophies</div>
+    <div style="font-size:20px;font-weight:900;color:#ffd96a;margin:6px 0 10px" id="achCount"></div>
+    <div id="achList" style="text-align:left"></div>
+    <button class="btn gold" id="bAchShare" style="width:100%;margin:10px 0 8px">SHARE MY TROPHIES</button>
+    <button class="chip" id="bAchBack">Back</button>
   </div>
 </div>
 
@@ -552,6 +566,62 @@ function dashFinish(){const i=dashInfo(),d=G.date;let sk=i.streak,got=[],badge="
     if(badge){let b=[];try{b=JSON.parse(store("hz_badges")||"[]")}catch(e){}b.push(badge.slice(3)+" "+d);store("hz_badges",JSON.stringify(b))}}
   else sk=i.streak;
   return{got,badge,sk,first}}
+/* ============ lifetime stats + achievements ============ */
+let ST={};try{ST=JSON.parse(store("hz_st")||"{}")}catch(e){ST={}}
+function saveST(){store("hz_st",JSON.stringify(ST))}
+const ACH=[
+ {id:"lines100",g:"Totals",n:"Liner",d:"Clear 100 lines",r:20,f:()=>(ST.lines||0)>=100},
+ {id:"lines500",g:"Totals",n:"Line Master",d:"Clear 500 lines",r:50,f:()=>(ST.lines||0)>=500},
+ {id:"lines2000",g:"Totals",n:"Line Legend",d:"Clear 2,000 lines",r:100,b:1,f:()=>(ST.lines||0)>=2000},
+ {id:"pure10",g:"Totals",n:"Pure Beginner",d:"Make 10 Pure clears",r:20,f:()=>(ST.pure||0)>=10},
+ {id:"pure50",g:"Totals",n:"Pure Artist",d:"Make 50 Pure clears",r:50,f:()=>(ST.pure||0)>=50},
+ {id:"pure250",g:"Totals",n:"Pure Genius",d:"Make 250 Pure clears",r:100,b:1,f:()=>(ST.pure||0)>=250},
+ {id:"pieces500",g:"Totals",n:"Builder",d:"Place 500 pieces",r:20,f:()=>(ST.pieces||0)>=500},
+ {id:"pieces5000",g:"Totals",n:"Architect",d:"Place 5,000 pieces",r:60,f:()=>(ST.pieces||0)>=5000},
+ {id:"days7",g:"Totals",n:"Regular",d:"Play on 7 different days",r:30,f:()=>(ST.days||0)>=7},
+ {id:"days30",g:"Totals",n:"Devoted",d:"Play on 30 different days",r:100,b:1,f:()=>(ST.days||0)>=30},
+ {id:"combo4",g:"Skill",n:"Combo Starter",d:"Reach a x4 combo",r:20,f:()=>(ST.combo||0)>=4},
+ {id:"combo8",g:"Skill",n:"Combo King",d:"Reach a x8 combo",r:60,f:()=>(ST.combo||0)>=8},
+ {id:"dblpure",g:"Skill",n:"Double Pure",d:"2 Pure clears with one piece",r:40,f:()=>(ST.pm||0)>=2},
+ {id:"perfect",g:"Skill",n:"Clean Sweep",d:"Clear the whole board",r:50,f:()=>(ST.perfect||0)>=1},
+ {id:"score1500",g:"Skill",n:"Big Score",d:"Score 1,500 in one game",r:30,f:()=>(ST.score||0)>=1500},
+ {id:"score4000",g:"Skill",n:"High Roller",d:"Score 4,000 in one game",r:80,b:1,f:()=>(ST.score||0)>=4000},
+ {id:"hard3",g:"Skill",n:"Perfectionist",d:"Get 3 stars on a Hard level",r:40,f:()=>!!ST.hard3},
+ {id:"lvl10",g:"Progress",n:"Explorer",d:"Reach level 10",r:20,f:()=>maxLevel()>=10},
+ {id:"lvl30",g:"Progress",n:"Adventurer",d:"Reach level 30",r:60,f:()=>maxLevel()>=30},
+ {id:"lvl60",g:"Progress",n:"Journey Complete",d:"Beat the last level",r:100,b:1,f:()=>maxLevel()>=MAXLV&&lvStars(MAXLV,0)>0},
+ {id:"stars50",g:"Progress",n:"Star Collector",d:"Collect 50 stars",r:30,f:()=>totalStars()>=50},
+ {id:"stars150",g:"Progress",n:"Star Hoarder",d:"Collect 150 stars",r:70,f:()=>totalStars()>=150},
+ {id:"weekly1",g:"Progress",n:"Weekly Winner",d:"Solve a Weekly Challenge",r:40,f:()=>(ST.weekly||0)>=1},
+ {id:"weekly4",g:"Progress",n:"Puzzle Pro",d:"Solve 4 Weekly Challenges",r:80,b:1,f:()=>(ST.weekly||0)>=4},
+ {id:"dash10",g:"Progress",n:"Dasher",d:"Finish 10 Daily Dashes",r:30,f:()=>(ST.dash||0)>=10},
+ {id:"dstreak3",g:"Progress",n:"Heating Up",d:"3-day Dash streak",r:20,f:()=>(ST.bs||0)>=3},
+ {id:"dstreak7",g:"Progress",n:"On Fire",d:"7-day Dash streak",r:40,f:()=>(ST.bs||0)>=7},
+ {id:"dstreak30",g:"Progress",n:"Unstoppable",d:"30-day Dash streak",r:120,b:1,f:()=>(ST.bs||0)>=30},
+ {id:"nobooster",g:"Secret",n:"Pure Skill",d:"Win a level without any booster",r:30,sec:1,f:()=>(ST.nb||0)>=1},
+ {id:"owl",g:"Secret",n:"Night Owl",d:"Play between midnight and 4 AM",r:20,sec:1,f:()=>!!ST.owl},
+ {id:"allmis",g:"Secret",n:"Mission Master",d:"Finish all 3 daily missions on 7 days",r:60,sec:1,f:()=>(ST.allm||0)>=7},
+ {id:"fashion",g:"Secret",n:"Fashionista",d:"Own 3 shop items",r:30,sec:1,f:()=>owned().length>=3}];
+function earnedAch(){let o={};try{o=JSON.parse(store("hz_ach")||"{}")}catch(e){}return o}
+const achQ=[];let achBusy=false;
+function achShow(){if(achBusy||!achQ.length)return;achBusy=true;const a=achQ.shift(),b=$("achBanner");
+  b.innerHTML="🏆 "+a.n+"<small>"+a.d+" · +"+a.r+" ✨"+(a.b?" + 1 booster":"")+"</small>";b.classList.add("show");
+  setTimeout(()=>{b.classList.remove("show");setTimeout(()=>{achBusy=false;achShow()},450)},2800)}
+function achCheck(){const e=earnedAch();let ch=false;
+  ACH.forEach(a=>{if(e[a.id])return;let ok=false;try{ok=a.f()}catch(x){}if(!ok)return;e[a.id]=todayStr();ch=true;
+    store("hz_sparks",String((+store("hz_sparks")||0)+a.r));if(a.b)addBoost(randBoost());achQ.push(a)});
+  if(ch){store("hz_ach",JSON.stringify(e));achShow();try{sfx.pure()}catch(x){}}}
+function renderAch(){const e=earnedAch(),n=ACH.filter(a=>e[a.id]).length;$("achCount").textContent="🏆 "+n+" / "+ACH.length+" earned";
+  let h="",g="";ACH.forEach(a=>{if(a.g!==g){g=a.g;h+='<div class="lbl" style="margin:12px 0 4px">'+g+'</div>'}
+    const got=!!e[a.id],hide2=a.sec&&!got;
+    h+='<div style="display:flex;gap:10px;align-items:center;margin:5px 0;padding:8px 10px;border-radius:14px;background:'+(got?"rgba(255,217,106,.16)":"rgba(0,0,0,.25)")+';border:1px solid '+(got?"#ffd96a":"var(--edge)")+';opacity:'+(got?1:.75)+'"><div style="font-size:24px">'+(got?"🏆":(hide2?"❓":"🔒"))+'</div><div style="flex:1"><div style="font-weight:900;font-size:14px">'+(hide2?"Secret trophy":a.n)+'</div><div style="font-size:12px;opacity:.8">'+(hide2?"Keep playing to find it":a.d)+'</div></div><div style="font-weight:800;font-size:12px;color:#ffd96a;text-align:right">'+a.r+' ✨'+(a.b?'<br>+🎁':"")+'</div></div>'});
+  $("achList").innerHTML=h}
+$("bAch").onclick=()=>{renderAch();hide("menu");show("achScr")};
+$("bAchBack").onclick=()=>{hide("achScr");show("menu");refreshMenu()};
+$("bAchShare").onclick=async()=>{const e=earnedAch(),name=($("nameIn").value||"").trim(),got=ACH.filter(a=>e[a.id]);
+  const t=(name?name+"'s ":"My ")+"Huezel trophies 🏆 "+got.length+"/"+ACH.length+"\n"+got.map(a=>"✅ "+a.n+" - "+a.d).join("\n")+"\nPlay: huezel.com";
+  try{if(navigator.share){await navigator.share({text:t});return}}catch(x){}
+  try{await navigator.clipboard.writeText(t);toast("Trophy list copied! Paste it anywhere.")}catch(x){prompt("Copy:",t)}};
 /* ============ daily missions: earn sparks for cosmetics ============ */
 const MPOOL=[
  {k:"lines",f:r=>[12,16,20][Math.floor(r()*3)],t:n=>"Clear "+n+" lines"},
@@ -567,7 +637,7 @@ function sparks(){return+store("hz_sparks")||0}
 function mTick(k,v,isMax){const o=MP();o[k]=isMax?Math.max(o[k]||0,v):(o[k]||0)+v;mCheck(o)}
 function mCheck(o){const ms=missionsFor(o.d);let add=0;
   ms.forEach((m,i)=>{if(!o.c.includes(i)&&(o[m.k]||0)>=m.goal){o.c.push(i);add+=10;toast("Mission complete! +10 ✨ · "+m.t)}});
-  if(add&&o.c.length===3&&!o.bonus){o.bonus=1;add+=20;setTimeout(()=>toast("All 3 missions done! +20 ✨ bonus"),2300)}
+  if(add&&o.c.length===3&&!o.bonus){o.bonus=1;ST.allm=(ST.allm||0)+1;saveST();add+=20;setTimeout(()=>toast("All 3 missions done! +20 ✨ bonus"),2300)}
   if(add){store("hz_sparks",String(sparks()+add))}
   store("hz_mp",JSON.stringify(o))}
 function renderMis(){const o=MP(),ms=missionsFor(o.d);$("misSparks").textContent="✨ "+sparks()+" sparks · "+o.c.length+"/3 done today";
@@ -594,7 +664,7 @@ function renderShop(){$("shopSparks").textContent="✨ "+sparks()+" sparks";cons
     b.onclick=()=>{if(own){equip();shopArm=null;renderShop();return}
       if(sparks()<it.price){toast("You need "+(it.price-sparks())+" more ✨ sparks. Finish daily missions!");return}
       if(shopArm!==it.id){shopArm=it.id;renderShop();return}
-      store("hz_sparks",String(sparks()-it.price));const o=owned();o.push(it.id);store("hz_own",JSON.stringify(o));equip();shopArm=null;toast("Unlocked "+it.name+"!");sfx.pure();renderShop()};
+      store("hz_sparks",String(sparks()-it.price));const o=owned();o.push(it.id);store("hz_own",JSON.stringify(o));equip();shopArm=null;toast("Unlocked "+it.name+"!");sfx.pure();renderShop();achCheck()};
     row.append(cv2,nm,b);el.appendChild(row)})}
 $("tabStyles").onclick=()=>{shopTab="styles";shopArm=null;renderShop()};
 $("tabThemes").onclick=()=>{shopTab="themes";shopArm=null;renderShop()};
@@ -636,7 +706,7 @@ function boostTap(k){if(!G||G.over||G.drag||state!=="play")return;
   if(G.tgt&&G.tgt.k===k){G.tgt=null;return}G.tgt=null;
   if(!BO[k]){toast("None left. Earn more by clearing stages and solving the weekly!");return}
   if(k==="rewind"){if(!G.undo){toast("Nothing to rewind yet");return}
-    const u=G.undo;if(u.mm){const o=MP();o.pieces=Math.max(0,(o.pieces||0)-1);o.lines=Math.max(0,(o.lines||0)-u.mm.l);o.pure=Math.max(0,(o.pure||0)-u.mm.p);store("hz_mp",JSON.stringify(o))}
+    const u=G.undo;if(u.mm){const o=MP();o.pieces=Math.max(0,(o.pieces||0)-1);o.lines=Math.max(0,(o.lines||0)-u.mm.l);o.pure=Math.max(0,(o.pure||0)-u.mm.p);store("hz_mp",JSON.stringify(o));ST.pieces=Math.max(0,(ST.pieces||0)-1);ST.lines=Math.max(0,(ST.lines||0)-u.mm.l);ST.pure=Math.max(0,(ST.pure||0)-u.mm.p);saveST()}
     G.board=u.board;G.score=u.score;G.combo=u.combo;G.pure=u.pure;G.lines=u.lines;G.bestCombo=u.bestCombo;G.pieces=u.pieces;G.turn=u.turn;G.placed=u.placed;
     G.undo=null;spendBoost(k);sfx.pick();ring(LW/2,BY+320,"#9ee8ff",500,.5,8);floatText(LW/2,BY+300,"REWIND","#9ee8ff",60);return}
   if(k==="shuffle"){const un=G.pieces.filter(q=>!q.used);if(!un.length)return;G.turn++;const set=genSet(G.board,seedFn(),G.cfg.colors,G.cfg.hard,G.cfg.bias||0);
@@ -671,6 +741,7 @@ function place(p,r0,c0){
   const cx=BX+(c0+p.s.w/2)*CELL,cy=BY+(r0+p.s.h/2)*CELL;burst(cx,cy,p.color,6+p.s.n,.5);sparkle(cx,cy,2+Math.floor(p.s.n/2),COLORS[p.color].light);ring(cx,cy,COLORS[p.color].light,120+30*p.s.n,.5,7);
   resolve();G.idle=0;G.hint=null;checkBest();
   {const o=MP();o.pieces=(o.pieces||0)+1;o.lines=(o.lines||0)+Math.max(0,G.lines-ml);o.pure=(o.pure||0)+Math.max(0,G.pure-mp);ud.mm={l:Math.max(0,G.lines-ml),p:Math.max(0,G.pure-mp)};o.combo=Math.max(o.combo||0,G.bestCombo);o.score=Math.max(o.score||0,G.score);mCheck(o)}
+  {const dl=Math.max(0,G.lines-ml),dp=Math.max(0,G.pure-mp);ST.pieces=(ST.pieces||0)+1;ST.lines=(ST.lines||0)+dl;ST.pure=(ST.pure||0)+dp;ST.combo=Math.max(ST.combo||0,G.bestCombo);ST.score=Math.max(ST.score||0,G.score);ST.pm=Math.max(ST.pm||0,dp);if(ST.day!==todayStr()){ST.day=todayStr();ST.days=(ST.days||0)+1}if(new Date().getHours()<4)ST.owl=1;saveST();achCheck()}
   if((G.cfg.kind==="stage"||G.cfg.kind==="daily")&&G.lines>=G.cfg.goalLines&&G.pure>=G.cfg.goalPure){G.over=true;G.won=true;G.overT=0;confetti();ring(LW/2,BY+320,"#ffd96a",800,1,14);
     [523,659,784,1047,1319].forEach((f,i)=>tone(f,.4,"triangle",.12,null,i*.09));floatText(LW/2,BY+300,"GOAL REACHED!","#ffd96a",70);setTimeout(()=>endGame(),1500);return}
   if(G.cfg.kind==="dash"&&G.placed>=G.cfg.pieces){G.over=true;G.overT=0;G.done=true;setTimeout(()=>endGame(),900);return}
@@ -721,7 +792,7 @@ function resolve(){
   if(G.combo>1)floatText(LW/2,BY+(pureN?220:250),"COMBO x"+mult.toFixed(1).replace(".0",""),"#ffd96a",50);
   if(nLines>1&&!pureN)floatText(LW/2,BY+300,["","","DOUBLE!","TRIPLE!","QUAD!","MEGA!"][Math.min(nLines,5)],"#9ee8ff",64);
   // board empty = perfect
-  if(B.every(r=>r.every(v=>v===null))){G.score+=500;floatText(LW/2,BY+520,"PERFECT BOARD +500","#ffd96a",58);ring(LW/2,BY+320,"#ffd96a",900,1.1,18)}
+  if(B.every(r=>r.every(v=>v===null))){G.score+=500;floatText(LW/2,BY+520,"PERFECT BOARD +500","#ffd96a",58);ST.perfect=(ST.perfect||0)+1;ring(LW/2,BY+320,"#ffd96a",900,1.1,18)}
 }
 function yesterdayStr(){return weekStr(-1)}
 function parFor(c){return Math.ceil(c.goalLines*2)+c.goalPure*2+4}
@@ -732,19 +803,19 @@ function endGame(){
   G.best=best;let streakTxt="",info="",stars="",title="";let got=[];
   $("bNext").style.display="none";$("bAgain").textContent="PLAY AGAIN";
   if(m==="classic"){title=isBest?"New best!":"Game over";sfx.over()}
-  else if(m==="dash"){const r=dashFinish();got=r.got;mTick("dash",1);sfx.pure();title=isBest?"New best today!":"Dash complete!";
+  else if(m==="dash"){const r=dashFinish();got=r.got;mTick("dash",1);ST.dash=(ST.dash||0)+1;ST.bs=Math.max(ST.bs||0,r.sk);sfx.pure();title=isBest?"New best today!":"Dash complete!";
     info=(G.done?"All "+c.pieces+" pieces placed":"No room left after "+G.placed+" pieces")+(r.first?"":"  ·  streak already counted today");
     streakTxt="🔥 "+r.sk+"-day streak"+(r.badge?"  ·  "+r.badge+"!":"");$("bAgain").textContent="TRY FOR A BETTER SCORE"}
   else{const goalTxt="Lines "+Math.min(G.lines,c.goalLines)+"/"+c.goalLines+(c.goalPure?"  ·  Pure "+Math.min(G.pure,c.goalPure)+"/"+c.goalPure:"");
     if(G.won){sfx.pure();const st=starsFor();G.stars=st;stars="★".repeat(st)+"☆".repeat(3-st);info="Solved with "+G.placed+" pieces";
-      if(m==="stage"){const L=c.level,t=c.tier,prev=lvStars(L,t);PROG[L]=PROG[L]||[0,0,0];PROG[L][t]=Math.max(prev,st);saveProg();mTick("wins",1);
+      if(m==="stage"){const L=c.level,t=c.tier,prev=lvStars(L,t);PROG[L]=PROG[L]||[0,0,0];PROG[L][t]=Math.max(prev,st);saveProg();mTick("wins",1);if(t===2&&st===3)ST.hard3=1;if(!G.boostUsed)ST.nb=(ST.nb||0)+1;
         got=levelRewards(L,t,prev===0,st,prev);title="Level "+L+" · "+TIERS[t].name+" cleared!";
         const nt=nextTarget(L,t);G.next=nt;const ok=nt.L<=MAXLV&&tierOpen(nt.L,nt.t);
         $("bNext").style.display=ok?"block":"none";$("bNext").textContent="NEXT: LEVEL "+nt.L+(nt.t?" "+TIERS[nt.t].name.toUpperCase():"");$("bAgain").textContent="REPLAY";
         if(st>prev&&prev>0)info+="  ·  new best stars!"}
       else{title=(G.cfg.design?DESIGNS[G.cfg.design].name+" week solved!":"Weekly challenge solved!");const d=G.date;let last=store("hz_last_daily"),sk=+store("hz_streak")||0;const first=last!==d;
         if(last!==d){sk=(last===yesterdayStr())?sk+1:1;store("hz_streak",String(sk));store("hz_last_daily",d);store("hz_daily_score_"+d,String(G.score))}
-        streakTxt="Weekly streak: "+sk+" week"+(sk>1?"s":"");if(first){got.push(randBoost(),randBoost());if(sk%3===0)got.push(randBoost(),randBoost(),randBoost())}}}
+        streakTxt="Weekly streak: "+sk+" week"+(sk>1?"s":"");if(first){ST.weekly=(ST.weekly||0)+1;got.push(randBoost(),randBoost());if(sk%3===0)got.push(randBoost(),randBoost(),randBoost())}}}
     else{sfx.over();title=m==="stage"?"Level "+c.level+" · "+TIERS[c.tier].name+" failed":(G.cfg.design?DESIGNS[G.cfg.design].name+" week: not solved yet":"Weekly not solved yet");info=goalTxt+" - no room left";$("bAgain").textContent="TRY AGAIN";
       if(m==="stage"){const key=c.level+"-"+c.tier;startGame.retry={key,r:((startGame.retry&&startGame.retry.key===key)?startGame.retry.r:0)+1}}
       if(m==="daily"){const d=G.date;store("hz_att_"+d,String((+store("hz_att_"+d)||0)+1))}}}
@@ -754,7 +825,7 @@ function endGame(){
   $("ovTitle").textContent=title;$("ovStars").textContent=stars;$("ovInfo").textContent=info;
   $("ovScore").textContent=G.score.toLocaleString();$("ovBest").textContent="Best "+best.toLocaleString();
   $("ovPure").firstChild.textContent=G.pure;$("ovLines").firstChild.textContent=G.lines;$("ovCombo").firstChild.textContent=G.bestCombo;
-  $("ovStreak").textContent=streakTxt;show("over");refreshMenu()}
+  $("ovStreak").textContent=streakTxt;saveST();achCheck();show("over");refreshMenu()}
 function shareText(){
   const name=($("nameIn").value||"").trim();let grid="";
   for(let r=0;r<N;r++){let line="";for(let c=0;c<N;c++){const v=G.board[r][c];line+=v===null?"⬛":COLORS[v].emoji}grid+=line+"\n"}
@@ -765,6 +836,7 @@ function shareText(){
 function refreshMenu(){const st=+store("hz_streak")||0,last=store("hz_last_daily"),t=weekStr(),att=+store("hz_att_"+t)||0;
   const dk=designKeyFor(weekStr());$("bDaily").firstChild.textContent="WEEKLY: "+DESIGNS[dk].emoji+" "+DESIGNS[dk].name.toUpperCase();
   $("dailySub").textContent=(last===t?"solved this week ✓":(att?att+" attempt"+(att>1?"s":"")+" this week":"very hard · new every Monday"))+(st?" · "+st+" wk streak":"");
+  {const ae=earnedAch();$("bAch").textContent="🏆 Trophies "+ACH.filter(a=>ae[a.id]).length+"/"+ACH.length}
   {const mo=MP();$("bMis").textContent="✨ Daily missions "+mo.c.length+"/3 · "+sparks()+" sparks"}
   const di=dashInfo();$("bDash").firstChild.textContent="🔥 DAILY DASH"+(di.streak&&!di.dead?" · "+di.streak+" day"+(di.streak>1?"s":""):"");$("bDash").classList.toggle("pulse",!di.played);
   $("dashSub").textContent=di.played?"done today ✓ · best "+(+store("hz_dbest_"+di.d)||0).toLocaleString()+" · tap to beat it":(di.streak&&di.missed>=1&&di.missed<=3?"you missed "+di.missed+" day"+(di.missed>1?"s":"")+"! catch up and keep your streak":(di.streak&&!di.dead?"play today to keep your streak!":"15 pieces · same for everyone · new daily"));

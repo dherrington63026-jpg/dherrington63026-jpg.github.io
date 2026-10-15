@@ -257,6 +257,16 @@
   </div>
 </div>
 
+<div class="screen" id="rescue">
+  <div class="panel" style="text-align:center">
+    <div class="lbl">No moves left</div>
+    <div style="font-size:26px;font-weight:900;margin:8px 0">Keep going?</div>
+    <div style="font-weight:700;line-height:1.5;opacity:.92;margin-bottom:12px" id="rescueTxt"></div>
+    <div id="rescueBtns"></div>
+    <button class="chip" id="bRescueNo" style="margin-top:6px">End this run</button>
+  </div>
+</div>
+
 <div class="screen" id="intro">
   <div class="panel" style="text-align:center">
     <div class="lbl" id="inKind">Stage 1</div>
@@ -1051,7 +1061,7 @@ function openBuy(pid){const P=PRODUCTS[pid];if(!P)return;if(P.once&&purchased().
   buyPid=pid;$("buyIcon").textContent=P.e;$("buyName").textContent=P.n;$("buySub").textContent=P.sub||"";
   $("bBuyYes").textContent=(Store.mode()==="test"?"TEST PURCHASE (no money) · ":"BUY · ")+Store.price(pid);$("buyNote").textContent=Store.mode()==="test"?"Tester mode: nothing is charged.":"Your App Store or Google Play account is charged. Purchases are final once delivered.";show("buyScr")}
 async function doBuy(){const pid=buyPid;if(!pid)return;hide("buyScr");let ok=false;try{ok=await Store.buy(pid)}catch(e){}
-  if(!ok){toast("Purchase cancelled");return}if(ok!=="delivered")grantProduct(pid);try{sfx.pure()}catch(e){}toast("Thank you! "+PRODUCTS[pid].n+" delivered.");if(!$("shopScr").classList.contains("show")===false)renderShop();refreshMenu()}
+  if(!ok){toast("Purchase cancelled");backToRescue();return}if(ok!=="delivered")grantProduct(pid);try{sfx.pure()}catch(e){}toast("Thank you! "+PRODUCTS[pid].n+" delivered.");backToRescue();if(!$("shopScr").classList.contains("show")===false)renderShop();refreshMenu()}
 async function buyCatchUp(n){for(let i=0;i<n;i++){const ok=await Store.buy("dash_catchup");if(!ok)return false;if(Store.mode()!=="test")recordSpend(PRODUCTS.dash_catchup.usd)}return true}
 function renderStoreTab(el){
   STORE_LIST.filter(pid=>Store.has(pid)).forEach(pid=>{const P=PRODUCTS[pid],done=P.once&&purchased().includes(pid);const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;margin:8px 0;padding:10px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid "+(pid==="premium_all"||pid==="starter"?"#ffd96a":"var(--edge)");
@@ -1082,7 +1092,7 @@ function renderShop(){$("shopSparks").textContent="✨ "+sparks()+" sparks";cons
       if(shopArm!==it.id){shopArm=it.id;renderShop();return}
       store("hz_sparks",String(sparks()-it.price));const o=owned();o.push(it.id);store("hz_own",JSON.stringify(o));equip();shopArm=null;toast("Unlocked "+it.name+"!");sfx.pure();renderShop();achCheck()};
     if(shopTab==="music"){cv2.style.width="56px";cv2.style.height="14px";cv2.style.display="none";const ic=document.createElement("div");ic.textContent=it.e;ic.style.cssText="font-size:26px;flex:none;width:36px;text-align:center";const pb=document.createElement("button");pb.className="chip";pb.textContent="▶";pb.style.cssText="flex:none;padding:8px 12px";pb.onclick=()=>previewMusic(it.id);row.append(ic,nm,pb,b)}else row.append(cv2,nm,b);el.appendChild(row)})}
-$("bBuyYes").onclick=doBuy;$("bBuyNo").onclick=()=>{hide("buyScr");buyPid=null};
+$("bBuyYes").onclick=doBuy;$("bBuyNo").onclick=()=>{hide("buyScr");buyPid=null;backToRescue()};
 $("tabStore").onclick=()=>{shopTab="store";shopArm=null;renderShop()};
 $("tabStyles").onclick=()=>{shopTab="styles";shopArm=null;renderShop()};
 $("tabMusic").onclick=()=>{shopTab="music";shopArm=null;renderShop()};
@@ -1149,7 +1159,7 @@ function boostTap(k){if(!G||G.over||G.drag||state!=="play")return;
     G.board=u.board;G.score=u.score;G.combo=u.combo;G.pure=u.pure;G.lines=u.lines;G.bestCombo=u.bestCombo;G.pieces=u.pieces;G.turn=u.turn;G.placed=u.placed;
     G.undo=null;spendBoost(k);sfx.pick();ring(LW/2,BY+320,"#9ee8ff",500,.5,8);floatText(LW/2,BY+300,"REWIND","#9ee8ff",60);return}
   if(k==="shuffle"){const un=G.pieces.filter(q=>!q.used);if(!un.length)return;G.turn++;const set=genSet(G.board,seedFn(),G.cfg.colors,G.cfg.hard,G.cfg.bias||0);
-    un.forEach((q,i)=>{q.s=set[i].s;q.color=set[i].color;q.t=-i*.08;q.sc=.2});spendBoost(k);G.undo=null;G.hint=null;sfx.pick();floatText(LW/2,BY+300,"SHUFFLE","#ffe9a8",60);return}
+    un.forEach((q,i)=>{q.s=set[i].s;q.color=set[i].color;q.t=-i*.08;q.sc=.2});spendBoost(k);G.undo=null;G.hint=null;sfx.pick();floatText(LW/2,BY+300,"SHUFFLE","#ffe9a8",60);checkEndAfterBoost();return}
   G.tgt=k==="hammer"?{k:"hammer",step:1,sel:[]}:k==="paint"?{k:"paint",step:1,sel:[]}:{k,step:1,sel:[]};sfx.pick()}
 function boardCellAt(x,y){const c=Math.floor((x-BX)/CELL),r=Math.floor((y-BY)/CELL);return(r>=0&&c>=0&&r<N&&c<N)?[r,c]:null}
 function palettePos(i,nc){return[LW/2+(i-(nc-1)/2)*92,TRAY_Y]}
@@ -1177,10 +1187,23 @@ function targetTap(x,y){const t=G.tgt;
   if(i>=0){t.sel.splice(i,1);sfx.tick();return}
   if(t.sel.length>=MAXSEL){toast("You can choose up to "+MAXSEL+" blocks");return}
   t.sel.push([r,c]);sfx.tick();vib(18)}
+function endNow(){G.offer=false;G.over=true;G.overT=0;setTimeout(()=>endGame(),900)}
+function rescueOptions(){return["shuffle","hammer","bomb","rewind"].filter(k=>boostUnlocked(k)&&(TESTER||BO[k]>0)&&(k!=="rewind"||G.undo))}
+function noMoves(){const kd=G.cfg.kind;if(noBoost()||kd==="dash"||kd==="trial"){endNow();return}
+  if(!rescueOptions().length&&Store.mode()!=="native"){endNow();return}
+  G.offer=true;G.hint=null;G.tgt=null;renderRescue();show("rescue")}
+function renderRescue(){const el=$("rescueBtns");el.innerHTML="";const ks=rescueOptions();
+  const tips={shuffle:"Get 3 new pieces",hammer:"Smash blocks to make room",bomb:"Blast a 3x3 area clear",rewind:"Undo your last move"};
+  $("rescueTxt").textContent=ks.length?"Nothing fits. Use a booster to keep your run alive.":"Nothing fits. A booster pack can keep your run alive.";
+  ks.forEach(k=>{const b=document.createElement("button");b.className="btn gold";b.style.cssText="width:100%;margin-bottom:8px;font-size:17px";const bd=BOOSTS.find(x=>x.k===k);
+    b.textContent=bd.icon+" "+bd.name+" ("+(TESTER?"∞":BO[k])+")  ·  "+tips[k];b.onclick=()=>{hide("rescue");G.offer=false;boostTap(k)};el.appendChild(b)});
+  if(Store.mode()==="native"&&PRODUCTS.boost_s&&!TESTER){const b=document.createElement("button");b.className="btn";b.style.cssText="width:100%;margin-bottom:8px;font-size:16px";b.textContent="🎁 Get a Booster pack · "+Store.price("boost_s");b.onclick=()=>{hide("rescue");openBuy("boost_s")};el.appendChild(b)}}
+function backToRescue(){if(G&&G.offer){if(rescueOptions().length||Store.mode()==="native"){renderRescue();show("rescue")}else endNow()}}
+$("bRescueNo").onclick=()=>{hide("rescue");endNow()};
 function checkEndAfterBoost(){
   if((G.cfg.kind==="stage"||G.cfg.kind==="daily"||G.cfg.kind==="event")&&G.lines>=G.cfg.goalLines&&G.pure>=G.cfg.goalPure){G.over=true;G.won=true;G.overT=0;confetti();ring(LW/2,BY+320,"#ffd96a",800,1,14);
     [523,659,784,1047,1319].forEach((f,i)=>tone(f,.4,"triangle",.12,null,i*.09));floatText(LW/2,BY+300,"GOAL REACHED!","#ffd96a",70);setTimeout(()=>endGame(),1500);return}
-  if(!G.over&&!G.pieces.some(q=>!q.used&&anyFit(G.board,q.s))){G.over=true;G.overT=0;setTimeout(()=>endGame(),900)}}
+  if(!G.over&&!G.pieces.some(q=>!q.used&&anyFit(G.board,q.s))){noMoves()}}
 function waveRect(i){return{x:i?370:40,y:TRAY_Y-46,w:310,h:92}}
 function waveCount(kind,r,c){let e=0;for(let k=0;k<N;k++){const v=kind==="row"?G.board[r][k]:G.board[k][c];if(v===null)e++}return e}
 function waveValid(r,c){const er=waveCount("row",r,c),ec=waveCount("col",r,c);return[er>0&&er<N,ec>0&&ec<N]}
@@ -1198,10 +1221,10 @@ function applyBomb(r,c){let n=0;for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc+
 function applySmash(){const t=G.tgt;spendBoost("hammer");let n=0;
   t.sel.forEach(([r,c])=>{const old=G.board[r][c];if(old===null)return;G.board[r][c]=null;n++;const[cx,cy]=cellXY(r,c);burst(cx+CELL/2,cy+CELL/2,old,16,1.1);sparkle(cx+CELL/2,cy+CELL/2,3,"#fff");ring(cx+CELL/2,cy+CELL/2,"#fff",200,.45,6)});
   fx.shake=Math.max(fx.shake,.3+.07*n);fx.slow=.07;fx.punch=Math.max(fx.punch,.03);sfx.clear(Math.min(n,4),0);vib([60,30,80]);
-  floatText(LW/2,BY+300,"SMASH x"+n,"#ffe9a8",60);G.undo=null;G.tgt=null;G.hint=null}
+  floatText(LW/2,BY+300,"SMASH x"+n,"#ffe9a8",60);G.undo=null;G.tgt=null;G.hint=null;checkEndAfterBoost()}
 function applyPaint(i){const t=G.tgt;spendBoost("paint");
   t.sel.forEach(([r,c])=>{G.board[r][c]=i;const[cx,cy]=cellXY(r,c);burst(cx+CELL/2,cy+CELL/2,i,10,.9);sparkle(cx+CELL/2,cy+CELL/2,2,COLORS[i].light);ring(cx+CELL/2,cy+CELL/2,COLORS[i].light,170,.45,6);fx.cells.push({kind:"land",r,c,t:0,delay:0})});
-  sfx.clear(2,1);vib([40,25,60]);floatText(LW/2,BY+300,"RECOLORED x"+t.sel.length,COLORS[i].light,52);G.undo=null;G.tgt=null;G.hint=null}
+  sfx.clear(2,1);vib([40,25,60]);floatText(LW/2,BY+300,"RECOLORED x"+t.sel.length,COLORS[i].light,52);G.undo=null;G.tgt=null;G.hint=null;checkEndAfterBoost()}
 function place(p,r0,c0){
   if(G.cfg.kind==="trial"&&G.t0&&performance.now()-G.t0>TRIAL_MS+250)return;
   if(G.moves)G.moves.push([p.slot,r0,c0,G.t0?Math.round(performance.now()-G.t0):0]);
@@ -1216,7 +1239,7 @@ function place(p,r0,c0){
     [523,659,784,1047,1319].forEach((f,i)=>tone(f,.4,"triangle",.12,null,i*.09));floatText(LW/2,BY+300,"GOAL REACHED!","#ffd96a",70);setTimeout(()=>endGame(),1500);return}
   if(G.cfg.kind==="dash"&&G.placed>=G.cfg.pieces){G.over=true;G.overT=0;G.done=true;setTimeout(()=>endGame(),900);return}
   if(G.pieces.every(q=>q.used))nextSet();
-  if(!G.over&&!G.pieces.some(q=>!q.used&&anyFit(G.board,q.s))){G.over=true;G.overT=0;setTimeout(()=>endGame(),900)}}
+  if(!G.over&&!G.pieces.some(q=>!q.used&&anyFit(G.board,q.s))){noMoves()}}
 function findHint(){let best=null,bs=-1;
   for(const p of G.pieces){if(p.used)continue;for(let r=0;r<=N-p.s.h;r++)for(let c=0;c<=N-p.s.w;c++){if(!fits(G.board,p.s,r,c))continue;
     const b=copyBoard(G.board);p.s.cells.forEach(([i,j])=>b[r+i][c+j]=p.color);const f=fullLines(b);let sc=f.rows.length+f.cols.length;
@@ -1498,7 +1521,7 @@ $("nameIn").value=store("hz_name")||"";syncOpts();refreshMenu();
 /* ============ input ============ */
 function toL(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left-OX)/VS,(e.clientY-r.top-OY)/VS]}
 function pieceRect(p){const[sx,sy]=slotCenter(p.slot);return{x:sx-120,y:sy-118,w:240,h:236}}
-cv.addEventListener("pointerdown",e=>{audio();if(state!=="play"||G.over||G.drag)return;const[x,y]=toL(e);
+cv.addEventListener("pointerdown",e=>{audio();if(state!=="play"||G.over||G.drag||G.offer)return;const[x,y]=toL(e);
   if(btutOn()&&x>=18&&x<=128&&y>=118&&y<=154){btutSeen(G.btut.k);G.btut=null;G.tgt=null;toast("Lesson skipped");return}
   if(G.tut&&x>=18&&x<=128&&y>=118&&y<=154){store("hz_tut_done","1");G.tut=null;toast("Tutorial skipped");return}
   if(Math.hypot(x-60,y-70)<44){if(G.mode==="stage"){openMap()}else{state="menu";show("menu");refreshMenu()}return}
@@ -1857,7 +1880,7 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-refreshWorlds();applyQ();const BUILD="2026-10-15 b25";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
+refreshWorlds();applyQ();const BUILD="2026-10-16 b26";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
 {let taps=0,tt=0;$("verTag").style.cssText+=";padding:8px 14px;cursor:pointer";$("verTag").onclick=()=>{const n=Date.now();if(n-tt>4000)taps=0;tt=n;taps++;if(taps>=7){taps=0;TESTER=!TESTER;store("hz_tester",TESTER?"1":"0");refreshWorlds();verTxt();refreshMenu();toast(TESTER?"Tester mode ON: unlimited boosters (scores won't count for leaderboards)":"Tester mode OFF")}}}
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});

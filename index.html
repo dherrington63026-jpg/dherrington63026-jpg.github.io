@@ -744,7 +744,7 @@ function dashFinish(){const i=dashInfo(),d=G.date;let sk=i.streak,got=[],badge="
   else sk=i.streak;
   return{got,badge,sk,first}}
 /* ============ online leaderboards (server re-plays every game to verify the score) ============ */
-const LB_API=(/^(127\.0\.0\.1|localhost)$/.test(location.hostname)&&new URLSearchParams(location.search).get("lb"))||""; // set to the Cloudflare Worker address to turn online leaderboards on, e.g. "https://huezel-lb.yourname.workers.dev"
+const LB_API=(/^(127\.0\.0\.1|localhost)$/.test(location.hostname)&&new URLSearchParams(location.search).get("lb"))||"https://huezel-lb.dherrington63026-d3b.workers.dev"; // set to the Cloudflare Worker address to turn online leaderboards on, e.g. "https://huezel-lb.yourname.workers.dev"
 function devId(){let d=store("hz_dev");if(!d){d=Array.from({length:16},()=>"abcdefghjkmnpqrstuvwxyz23456789"[Math.floor(Math.random()*31)]).join("");store("hz_dev",d)}return d}
 function lbName(){let n=($("nameIn").value||"").replace(/[^\w \-']/g,"").trim().slice(0,14);if(n.length<2){n=store("hz_autoname")||("Player"+Math.floor(1000+Math.random()*9000));store("hz_autoname",n)}return n}
 function lbPost(path,body){return fetch(LB_API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(r=>r.json())}
@@ -1590,7 +1590,7 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-applyQ();const BUILD="2026-10-15 b16";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
+applyQ();const BUILD="2026-10-15 b17";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
 {let taps=0,tt=0;$("verTag").style.cssText+=";padding:8px 14px;cursor:pointer";$("verTag").onclick=()=>{const n=Date.now();if(n-tt>4000)taps=0;tt=n;taps++;if(taps>=7){taps=0;TESTER=!TESTER;store("hz_tester",TESTER?"1":"0");verTxt();refreshMenu();toast(TESTER?"Tester mode ON: unlimited boosters (scores won't count for leaderboards)":"Tester mode OFF")}}}
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});

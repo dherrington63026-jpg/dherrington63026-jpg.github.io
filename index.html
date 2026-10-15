@@ -87,6 +87,7 @@
   <h1 class="logo">HUEZEL</h1>
   <div style="height:8px"></div>
   <button class="btn dash" id="bDash">🔥 DAILY DASH<small id="dashSub">15 pieces · same for everyone</small></button>
+  <button class="btn" id="bEvent" style="display:none;background:linear-gradient(180deg,#ffb347,#ff7a1a 55%,#b8470a);border-color:#ffd9a8;color:#fff">EVENT<small id="evSub"></small></button>
   <button class="btn hot" id="bStage">JOURNEY<small id="stageSub">level 1</small></button>
   <button class="btn gold" id="bDaily">WEEKLY CHALLENGE<small id="dailySub">very hard · new every week</small></button>
   <button class="btn" id="bClassic">CLASSIC<small>endless, chase your best</small></button>
@@ -188,6 +189,18 @@
   </div>
 </div>
 
+<div class="screen" id="evScr">
+  <div class="panel" style="text-align:center">
+    <div class="lbl" id="evDays"></div>
+    <div style="font-size:30px;font-weight:900;margin:8px 0" id="evTitle"></div>
+    <div style="font-weight:700;line-height:1.5;opacity:.92;margin-bottom:10px" id="evDesc"></div>
+    <div id="evStatus" style="font-weight:800;color:#ffd96a;margin-bottom:12px;font-size:14px;line-height:1.4"></div>
+    <button class="btn hot" id="bEvPlay" style="width:100%;margin-bottom:10px">PLAY EVENT CHALLENGE</button>
+    <button class="btn gold" id="bEvShop" style="width:100%;margin-bottom:10px">LIMITED SHOP ITEMS</button>
+    <button class="chip" id="bEvBack">Back</button>
+  </div>
+</div>
+
 <div class="screen" id="catchScr">
   <div class="panel" style="text-align:center">
     <div class="lbl">Keep your streak</div>
@@ -260,6 +273,25 @@ const COLOR_SETS=[
  {id:"cs_sunset",name:"Sunset",price:150,c:["#ff4d4d","#5b6bff","#8bc34a","#ffd166","#a23b9c","#ff7a45","#2ec4b6","#ff6b9d"]},
  {id:"cs_neon",name:"Neon",price:150,c:["#ff1f5a","#1f6bff","#00ff7a","#fff200","#b400ff","#ff7a00","#00f0ff","#ff2fd0"]},
  {id:"cs_metal",name:"Metallic",price:200,c:["#c1443f","#3f6fb5","#4f9a63","#c9a23a","#7f56a8","#c9743a","#3a9a96","#b8587f"]}];
+const EVENTS=[
+ {id:"halloween",name:"Spooky Season",emoji:"🎃",from:1017,to:1102,desc:"A haunted board packed with bombs and ice. Clear it to win the Spooky color set!",cfg:{stones:0,rainbow:1,bombs:2,ice:2,goalLines:12,goalPure:2},
+  set:["#ff7a00","#7a3cff","#5dff3c","#f2ead0","#b300ff","#ff4d00","#00d9c0","#ff3da0"],tname:"Haunted Night",theme:{bg:["#2a0f3a","#1a0826","#0a0314"],orbs:["255,120,20","160,60,255","80,255,120"],star:"255,170,60",drift:.02,big:1.6,panel:"20,6,30"}},
+ {id:"harvest",name:"Harvest Festival",emoji:"🦃",from:1116,to:1130,desc:"A thankful puzzle full of stones and rainbow blocks. Clear it to win the Harvest color set!",cfg:{stones:3,rainbow:2,bombs:0,ice:0,goalLines:12,goalPure:2},
+  set:["#c0392b","#3b6ea5","#7a9a2c","#e0a526","#8a4a6a","#d9731f","#3a8a78","#c9667a"],tname:"Harvest Moon",theme:{bg:["#4a2a10","#2e1808","#160a04"],orbs:["255,160,50","200,90,30","255,210,90"],star:"255,220,140",drift:.03,big:1.9,panel:"30,14,6"}},
+ {id:"winter",name:"Winter Holidays",emoji:"🎄",from:1214,to:1231,desc:"A frosty puzzle of ice and bombs. Clear it to win the Holiday color set!",cfg:{stones:0,rainbow:1,bombs:1,ice:3,goalLines:13,goalPure:2},
+  set:["#e0243a","#2a9df4","#1fa352","#ffd35a","#9a6bd6","#ff8a3d","#36d1c4","#ff8fb0"],tname:"Holiday Lights",theme:{bg:["#0c3a2a","#082a1e","#041510"],orbs:["255,60,60","255,200,60","60,255,140"],star:"255,255,255",drift:.05,big:1.8,panel:"6,30,20"}},
+ {id:"valentine",name:"Sweetheart Week",emoji:"💝",from:207,to:215,desc:"A lovely puzzle full of rainbow blocks. Clear it to win the Sweetheart color set!",cfg:{stones:0,rainbow:3,bombs:0,ice:0,goalLines:11,goalPure:2},
+  set:["#ff2e63","#7d5fff","#ff9ec6","#ffd1dc","#c44dff","#ff7a8a","#5ee6d3","#ff5fa2"],tname:"Sweetheart",theme:{bg:["#5a1038","#3a0a26","#1a0412"],orbs:["255,90,150","255,150,200","200,80,255"],star:"255,200,220",drift:.03,big:1.8,panel:"40,8,28"}},
+ {id:"spring",name:"Spring Bloom",emoji:"🌸",from:315,to:405,desc:"A fresh puzzle of ice and rainbow blocks. Clear it to win the Bloom color set!",cfg:{stones:0,rainbow:2,bombs:0,ice:2,goalLines:12,goalPure:2},
+  set:["#ff6b8b","#5aa9ff","#6bd66b","#fff06a","#b48cff","#ffa05a","#4fe0c8","#ff9de0"],tname:"Blossom",theme:{bg:["#1e4a3a","#143028","#0a1a14"],orbs:["255,160,200","160,255,180","255,240,140"],star:"255,220,240",drift:.025,big:1.8,panel:"8,32,24"}},
+ {id:"summer",name:"Summer Sparks",emoji:"🎆",from:628,to:708,desc:"A blazing puzzle full of bombs. Clear it to win the Sparks color set!",cfg:{stones:0,rainbow:1,bombs:3,ice:0,goalLines:12,goalPure:2},
+  set:["#ff2d2d","#2d6bff","#2dff8a","#fff12d","#c02dff","#ff8a2d","#2dfff1","#ff2dc0"],tname:"Fireworks",theme:{bg:["#0a1a4a","#071033","#03081a"],orbs:["255,60,60","60,120,255","255,220,60"],star:"255,255,200",drift:-.02,big:1.7,panel:"4,12,40"}}];
+EVENTS.forEach(e=>COLOR_SETS.push({id:"cs_"+e.id,name:e.name+" colors",price:200,ev:e.id,c:e.set}));
+const EVQ=new URLSearchParams(location.search).get("event");
+function activeEvent(){if(EVQ){const e=EVENTS.find(x=>x.id===EVQ);if(e)return e}const d=new Date(),k=(d.getMonth()+1)*100+d.getDate();return EVENTS.find(e=>k>=e.from&&k<=e.to)||null}
+function evById(id){return EVENTS.find(e=>e.id===id)||EVENTS[0]}
+function evActive(id){const a=activeEvent();return !!a&&a.id===id}
+function evDaysLeft(e){if(EVQ)return 7;const d=new Date(),end=new Date(d.getFullYear(),Math.floor(e.to/100)-1,e.to%100,23,59);return Math.max(1,Math.ceil((end-d)/864e5))}
 function hexRGB(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]}
 function hexMix(rgb,t,to){return"#"+rgb.map((v,i)=>Math.round(v+(to-v)*t).toString(16).padStart(2,"0")).join("")}
 let BCS=store("hz_bcs")||"cs_classic";
@@ -664,6 +696,8 @@ const ACH=[
  {id:"spend10",g:"Supporter",n:"Champion",d:"Spend $10 in the game",r:300,b:1,f:()=>(ST.spent||0)>=10},
  {id:"spend20",g:"Supporter",n:"VIP",d:"Spend $20 in the game",r:600,b:1,f:()=>(ST.spent||0)>=20},
  {id:"spend100",g:"Supporter",n:"Huezel Legend",d:"Spend $100 in the game",r:3000,b:1,f:()=>(ST.spent||0)>=100},
+ {id:"event1",g:"Progress",n:"Seasonal Star",d:"Clear a seasonal event challenge",r:60,f:()=>(ST.events||0)>=1},
+ {id:"event3",g:"Progress",n:"Event Collector",d:"Clear 3 seasonal events",r:150,b:1,f:()=>(ST.events||0)>=3},
  {id:"nobooster",g:"Secret",n:"Pure Skill",d:"Win a level without any booster",r:30,sec:1,f:()=>(ST.nb||0)>=1},
  {id:"owl",g:"Secret",n:"Night Owl",d:"Play between midnight and 4 AM",r:20,sec:1,f:()=>!!ST.owl},
  {id:"allmis",g:"Secret",n:"Mission Master",d:"Finish all 3 daily missions on 7 days",r:60,sec:1,f:()=>(ST.allm||0)>=7},
@@ -722,7 +756,7 @@ function isOwned(id){return id==="gem"||owned().includes(id)}
 let shopArm=null,shopTab="styles";
 function renderShop(){$("shopSparks").textContent="✨ "+sparks()+" sparks";const el=$("shopList");el.innerHTML="";
   $("tabStyles").classList.toggle("off",shopTab!=="styles");$("tabThemes").classList.toggle("off",shopTab!=="themes");$("tabColors").classList.toggle("off",shopTab!=="colors");
-  const items=shopTab==="styles"?STYLES:shopTab==="themes"?THEMES:COLOR_SETS,cur=shopTab==="styles"?BST:shopTab==="themes"?BTH:BCS;
+  const items=(shopTab==="styles"?STYLES:shopTab==="themes"?THEMES:COLOR_SETS).filter(it=>!it.ev||isOwned(it.id)||evActive(it.ev)),cur=shopTab==="styles"?BST:shopTab==="themes"?BTH:BCS;
   items.forEach(it=>{const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid "+(cur===it.id?"#ffd96a":"var(--edge)");
     const cv2=document.createElement("canvas");cv2.width=240;cv2.height=60;cv2.style.cssText="position:static;left:auto;right:auto;top:auto;bottom:auto;width:120px;height:30px;flex:none;touch-action:auto;border-radius:8px";const c2=cv2.getContext("2d");
     if(shopTab==="styles"){for(let i=0;i<4;i++){const sp=makeSpriteStyle(i,it.id),sz=44,e=sz*PADF,t=sz+2*e;c2.drawImage(sp.k,8+i*58-e,8-e,t,t)}}
@@ -730,7 +764,7 @@ function renderShop(){$("shopSparks").textContent="✨ "+sparks()+" sparks";cons
     else{const g=c2.createLinearGradient(0,0,240,60);g.addColorStop(0,it.bg[0]);g.addColorStop(.6,it.bg[1]);g.addColorStop(1,it.bg[2]);c2.fillStyle=g;c2.fillRect(0,0,240,60);
       const oc=it.orbs||["120,80,255","255,120,160","80,200,255"];oc.forEach((o,i)=>{const rg=c2.createRadialGradient(40+i*80,30,0,40+i*80,30,60);rg.addColorStop(0,"rgba("+o+",.55)");rg.addColorStop(1,"rgba("+o+",0)");c2.fillStyle=rg;c2.fillRect(0,0,240,60)});
       for(let i=0;i<14;i++){c2.fillStyle="rgba("+it.star+",.8)";c2.beginPath();c2.arc((i*37)%240,(i*23)%60,1.5*it.big,0,6.3);c2.fill()}}
-    const nm=document.createElement("div");nm.style.cssText="flex:1;text-align:left;font-weight:800;font-size:14px";nm.textContent=it.name;
+    const nm=document.createElement("div");nm.style.cssText="flex:1;text-align:left;font-weight:800;font-size:14px";nm.textContent=it.name+(it.ev&&!isOwned(it.id)?" ⏳ "+evDaysLeft(evById(it.ev))+"d":"");
     const b=document.createElement("button");b.className="chip";b.style.cssText="flex:none;min-width:92px;padding:8px 10px";
     const own=isOwned(it.id)||it.price===0;b.textContent=cur===it.id?"✓ Equipped":own?"Equip":(shopArm===it.id?"Tap to buy":"✨ "+it.price);
     if(!own&&sparks()<it.price)b.style.opacity=".5";
@@ -752,6 +786,7 @@ function startGame(mode,stage,tier,opts){
   if(mode==="stage"){const L=stage||1,t=tier||0;cfg=levelCfg(L,t);const key=L+"-"+t,rt=(startGame.retry&&startGame.retry.key===key)?startGame.retry.r:0;seedBase="lv"+L+"t"+t+"r"+rt}
   else if(mode==="daily"){cfg=dailyCfg(d);seedBase="huezel-"+d}
   else if(mode==="dash"){cfg={kind:"dash",colors:4,stones:0,goalLines:0,goalPure:0,hard:.25,bias:.55,pieces:DASH_PIECES};seedBase="dash-"+d}
+  else if(mode==="event"){const e=activeEvent()||EVENTS[0];cfg={kind:"event",ev:e.id,colors:5,hard:.5,bias:.5,...e.cfg};seedBase="ev-"+e.id}
   else cfg={kind:"classic",colors:4,stones:0,goalLines:0,goalPure:0,hard:0,bias:0};
   if(opts&&opts.seed)seedBase=opts.seed;
   PAL=cfg.kind==="daily"?[0,1,2,3,4]:(cfg.kind==="stage"&&cfg.level<=3)?[0,1,2,3,4,6,7,8]:shufflePool("pal|"+(cfg.kind==="stage"?cfg.level:seedBase));
@@ -820,7 +855,7 @@ function place(p,r0,c0){
   resolve();G.idle=0;G.hint=null;checkBest();
   {const o=MP();o.pieces=(o.pieces||0)+1;o.lines=(o.lines||0)+Math.max(0,G.lines-ml);o.pure=(o.pure||0)+Math.max(0,G.pure-mp);ud.mm={l:Math.max(0,G.lines-ml),p:Math.max(0,G.pure-mp)};o.combo=Math.max(o.combo||0,G.bestCombo);o.score=Math.max(o.score||0,G.score);mCheck(o)}
   {const dl=Math.max(0,G.lines-ml),dp=Math.max(0,G.pure-mp);ST.pieces=(ST.pieces||0)+1;ST.lines=(ST.lines||0)+dl;ST.pure=(ST.pure||0)+dp;ST.combo=Math.max(ST.combo||0,G.bestCombo);ST.score=Math.max(ST.score||0,G.score);ST.pm=Math.max(ST.pm||0,dp);if(ST.day!==todayStr()){ST.day=todayStr();ST.days=(ST.days||0)+1}if(new Date().getHours()<4)ST.owl=1;saveST();achCheck()}
-  if((G.cfg.kind==="stage"||G.cfg.kind==="daily")&&G.lines>=G.cfg.goalLines&&G.pure>=G.cfg.goalPure){G.over=true;G.won=true;G.overT=0;confetti();ring(LW/2,BY+320,"#ffd96a",800,1,14);
+  if((G.cfg.kind==="stage"||G.cfg.kind==="daily"||G.cfg.kind==="event")&&G.lines>=G.cfg.goalLines&&G.pure>=G.cfg.goalPure){G.over=true;G.won=true;G.overT=0;confetti();ring(LW/2,BY+320,"#ffd96a",800,1,14);
     [523,659,784,1047,1319].forEach((f,i)=>tone(f,.4,"triangle",.12,null,i*.09));floatText(LW/2,BY+300,"GOAL REACHED!","#ffd96a",70);setTimeout(()=>endGame(),1500);return}
   if(G.cfg.kind==="dash"&&G.placed>=G.cfg.pieces){G.over=true;G.overT=0;G.done=true;setTimeout(()=>endGame(),900);return}
   if(G.pieces.every(q=>q.used))nextSet();
@@ -892,6 +927,10 @@ function endGame(){
   else if(m==="dash"){const r=dashFinish();got=r.got;mTick("dash",1);ST.dash=(ST.dash||0)+1;ST.bs=Math.max(ST.bs||0,r.sk);sfx.pure();title=isBest?"New best today!":"Dash complete!";
     info=(G.done?"All "+c.pieces+" pieces placed":"No room left after "+G.placed+" pieces")+(r.first?"":"  ·  streak already counted today");
     streakTxt="🔥 "+r.sk+"-day streak"+(r.badge?"  ·  "+r.badge+"!":"");$("bAgain").textContent="TRY FOR A BETTER SCORE"}
+  else if(m==="event"){const e=evById(c.ev),key=e.id+"-"+new Date().getFullYear();let evd={};try{evd=JSON.parse(store("hz_ev")||"{}")}catch(x){}
+    if(G.won){sfx.pure();title=e.emoji+" "+e.name+" cleared!";info="Solved with "+G.placed+" pieces";
+      if(!evd[key]){evd[key]=1;store("hz_ev",JSON.stringify(evd));ST.events=(ST.events||0)+1;store("hz_sparks",String(sparks()+100));got.push(randBoost(),randBoost());const ow=owned();if(!ow.includes("cs_"+e.id)){ow.push("cs_"+e.id);store("hz_own",JSON.stringify(ow))}streakTxt="+100 ✨ and the "+e.name+" colors unlocked!"}else streakTxt="Already cleared this event. Nice replay!"}
+    else{sfx.over();title=e.emoji+" "+e.name+": not yet";info="Lines "+Math.min(G.lines,c.goalLines)+"/"+c.goalLines+(c.goalPure?" · Pure "+Math.min(G.pure,c.goalPure)+"/"+c.goalPure:"")+" - no room left";$("bAgain").textContent="TRY AGAIN"}}
   else{const goalTxt="Lines "+Math.min(G.lines,c.goalLines)+"/"+c.goalLines+(c.goalPure?"  ·  Pure "+Math.min(G.pure,c.goalPure)+"/"+c.goalPure:"");
     if(G.won){sfx.pure();const st=starsFor();G.stars=st;stars="★".repeat(st)+"☆".repeat(3-st);info="Solved with "+G.placed+" pieces";
       if(m==="stage"){const L=c.level,t=c.tier,prev=lvStars(L,t);PROG[L]=PROG[L]||[0,0,0];PROG[L][t]=Math.max(prev,st);saveProg();mTick("wins",1);if(t===2&&st===3)ST.hard3=1;if(!G.boostUsed)ST.nb=(ST.nb||0)+1;
@@ -916,7 +955,7 @@ function endGame(){
 function shareText(){
   const name=($("nameIn").value||"").trim();let grid="";
   for(let r=0;r<N;r++){let line="";for(let c=0;c<N;c++){const v=G.board[r][c];line+=v===null?"⬛":COLORS[v].emoji}grid+=line+"\n"}
-  const mode=G.mode==="dash"?"Daily Dash ("+G.date+")":G.mode==="daily"?"Weekly "+(G.cfg.design?designTitle(G.cfg.design):"Challenge")+" ("+weekLabel(G.date)+")":(G.mode==="stage"?"Level "+G.cfg.level+" "+TIERS[G.cfg.tier].name:"Classic");
+  const mode=G.mode==="event"?evById(G.cfg.ev).name:G.mode==="dash"?"Daily Dash ("+G.date+")":G.mode==="daily"?"Weekly "+(G.cfg.design?designTitle(G.cfg.design):"Challenge")+" ("+weekLabel(G.date)+")":(G.mode==="stage"?"Level "+G.cfg.level+" "+TIERS[G.cfg.tier].name:"Classic");
   const head=(name?name+"'s ":"")+"Huezel "+mode;
   const res=(G.mode==="classic"||G.mode==="dash")?(G.mode==="dash"?"🔥 "+(+store("hz_dstreak")||0)+"-day streak\n":""):(G.won?("✅ Solved in "+G.placed+" pieces "+"★".repeat(G.stars||1)+(G.boostUsed?"":" 🏅 no boosters")+"\n"):("❌ "+Math.min(G.lines,G.cfg.goalLines)+"/"+G.cfg.goalLines+" lines"+(G.cfg.goalPure?" · "+Math.min(G.pure,G.cfg.goalPure)+"/"+G.cfg.goalPure+" Pure":"")+"\n"));
   return head+"\n"+res+G.score.toLocaleString()+" pts  ·  "+G.pure+" Pure clears  ·  combo x"+G.bestCombo+"\n"+grid+"Play: huezel.com"}
@@ -925,6 +964,7 @@ function refreshMenu(){const st=+store("hz_streak")||0,last=store("hz_last_daily
   $("dailySub").textContent=(last===t?"solved this week ✓":(att?att+" attempt"+(att>1?"s":"")+" this week":"very hard · new every Monday"))+(st?" · "+st+" wk streak":"");
   {const ae=earnedAch();$("bAch").textContent="🏆 Trophies "+ACH.filter(a=>ae[a.id]).length+"/"+ACH.length}
   {const mo=MP();$("bMis").textContent="✨ Daily missions "+mo.c.length+"/3 · "+sparks()+" sparks"}
+  {const ae2=activeEvent(),be=$("bEvent");if(ae2){be.style.display="block";be.firstChild.textContent=ae2.emoji+" "+ae2.name.toUpperCase();$("evSub").textContent="limited event · "+evDaysLeft(ae2)+" days left · new looks + challenge"}else be.style.display="none"}
   const di=dashInfo();$("bDash").firstChild.textContent="🔥 DAILY DASH"+(di.streak&&!di.dead?" · "+di.streak+" day"+(di.streak>1?"s":""):"");$("bDash").classList.toggle("pulse",!di.played);
   $("dashSub").textContent=di.played?"done today ✓ · best "+(+store("hz_dbest_"+di.d)||0).toLocaleString()+" · tap to beat it":(di.streak&&di.missed>=1&&di.missed<=3?"you missed "+di.missed+" day"+(di.missed>1?"s":"")+"! catch up and keep your streak":(di.streak&&!di.dead?"play today to keep your streak!":"15 pieces · same for everyone · new daily"));
   const firstTime=!store("hz_tut_done")&&totalStars()===0;$("bStage").classList.toggle("pulse",firstTime);
@@ -948,6 +988,9 @@ let skipIntro=false;
 function showIntro(){if(skipIntro){skipIntro=false;return}
   if(G.chal){$("inKind").textContent="Friend challenge";$("inGoal").textContent=G.chal.name+" scored "+G.chal.score.toLocaleString();$("inChips").innerHTML='<span class="chip" style="cursor:default">same pieces for both of you</span>';
     $("inTip").textContent="Play the exact same game "+G.chal.name+" played. Beat their score to win!";$("inStars").textContent="";$("inExtra").textContent="";show("intro");return}if(G.cfg.kind==="classic")return;const c=G.cfg;
+  if(c.kind==="event"){const e=evById(c.ev);$("inKind").textContent=e.emoji+" "+e.name+" · limited event";$("inGoal").textContent="Clear "+c.goalLines+" lines";
+    $("inChips").innerHTML='<span class="chip" style="cursor:default;color:#ffd96a;border-color:#ffd96a">★ '+c.goalPure+' PURE clears needed</span> '+(c.stones?'<span class="chip" style="cursor:default">'+c.stones+' stones</span> ':"")+(c.rainbow?'<span class="chip" style="cursor:default">'+c.rainbow+' 🌈</span> ':"")+(c.bombs?'<span class="chip" style="cursor:default">'+c.bombs+' 💣</span> ':"")+(c.ice?'<span class="chip" style="cursor:default">'+c.ice+' 🧊</span> ':"");
+    $("inTip").textContent=e.desc;$("inStars").textContent="";$("inExtra").textContent="First win: 100 sparks, 2 boosters and the event colors for free!";show("intro");return}
   if(c.kind==="dash"){$("inKind").textContent="Daily Dash · "+G.date;$("inGoal").textContent=c.pieces+" pieces. Score big!";
     $("inChips").innerHTML='<span class="chip" style="cursor:default">same pieces for everyone</span> <span class="chip" style="cursor:default">no boosters</span>';
     $("inTip").textContent="Place all "+c.pieces+" shapes and score as many points as you can. Pure clears (one-color lines) and combos score the most. Plan ahead: the run ends early if nothing fits!";
@@ -1042,6 +1085,13 @@ if(NATIVE){try{Capacitor.Plugins.Preferences.keys().then(r=>{const ks=(r.keys||[
 /* ============ screens ============ */
 function show(id){$(id).classList.add("show")}function hide(id){$(id).classList.remove("show")}
 $("bDash").onclick=dashStart;
+function renderEvent(){const e=activeEvent();if(!e)return;let evd={};try{evd=JSON.parse(store("hz_ev")||"{}")}catch(x){}const done=!!evd[e.id+"-"+new Date().getFullYear()];
+  $("evDays").textContent="Limited time · "+evDaysLeft(e)+" day"+(evDaysLeft(e)>1?"s":"")+" left";$("evTitle").textContent=e.emoji+" "+e.name;$("evDesc").textContent=e.desc;
+  $("evStatus").textContent=done?"✅ Challenge cleared! Replay it any time.":"Win once: 100 ✨ sparks, 2 boosters and the "+e.name+" colors, free.\nOr buy the "+e.tname+" theme and colors in the shop before the event ends."}
+$("bEvent").onclick=()=>{if(!activeEvent())return;renderEvent();hide("menu");show("evScr")};
+$("bEvBack").onclick=()=>{hide("evScr");show("menu");refreshMenu()};
+$("bEvPlay").onclick=()=>{hide("evScr");store("hz_name",$("nameIn").value);startGame("event")};
+$("bEvShop").onclick=()=>{hide("evScr");shopArm=null;shopTab="themes";renderShop();show("shopScr")};
 $("bClassic").onclick=()=>{store("hz_name",$("nameIn").value);startGame("classic")};
 $("bStage").onclick=()=>{store("hz_name",$("nameIn").value);openMap()};
 $("bNext").onclick=()=>{const nt=G.next;if(nt)startGame("stage",nt.L,nt.t)};
@@ -1119,6 +1169,7 @@ const THEMES=[
  {id:"ocean",name:"Deep Ocean",price:150,bg:["#06456b","#04304e","#021a30"],orbs:["60,200,230","40,120,255","80,230,200"],star:"200,245,255",drift:-.03,big:1.6,panel:"3,24,44"},
  {id:"forest",name:"Forest Glow",price:200,bg:["#0f3a24","#0a2a1a","#05150d"],orbs:["80,220,120","200,240,90","60,180,150"],star:"230,255,150",drift:.008,big:1.7,panel:"5,28,16"},
  {id:"snow",name:"Snowfall",price:300,bg:["#27457a","#1a2f5c","#0c1a3a"],orbs:["170,210,255","220,235,255","140,180,255"],star:"255,255,255",drift:.06,big:1.8,panel:"12,22,52"}];
+EVENTS.forEach(e=>THEMES.push({id:"th_"+e.id,name:e.tname,price:150,ev:e.id,...e.theme}));
 let BTH=store("hz_bth")||"space";
 function TH(){return THEMES.find(t=>t.id===BTH)||THEMES[0]}
 function background(){const th=TH();
@@ -1256,7 +1307,7 @@ function drawPiece(p,lifted){const cs=CELL*p.sc;const w=p.s.w*cs,h=p.s.h*cs;cons
 function hud(){
   ctx.textAlign="center";ctx.textBaseline="middle";
   ctx.font="800 22px 'Segoe UI',system-ui,sans-serif";ctx.fillStyle="rgba(255,255,255,.6)";
-  ctx.fillText(G.mode==="daily"?"WEEKLY  "+(G.cfg.design?designTitle(G.cfg.design):weekLabel(G.date)):(G.mode==="stage"?"LEVEL "+G.cfg.level+" · "+TIERS[G.cfg.tier].name.toUpperCase():G.mode==="dash"?"DAILY DASH":"CLASSIC"),LW/2,52);
+  ctx.fillText(G.mode==="daily"?"WEEKLY  "+(G.cfg.design?designTitle(G.cfg.design):weekLabel(G.date)):(G.mode==="stage"?"LEVEL "+G.cfg.level+" · "+TIERS[G.cfg.tier].name.toUpperCase():G.mode==="dash"?"DAILY DASH":G.mode==="event"?evById(G.cfg.ev).name.toUpperCase():"CLASSIC"),LW/2,52);
   ctx.font="900 112px 'Segoe UI',system-ui,sans-serif";ctx.lineWidth=14;ctx.strokeStyle="rgba(20,8,60,.85)";ctx.lineJoin="round";
   const sc=Math.round(G.shown).toLocaleString();const pulse=1+Math.min(.12,Math.abs(G.score-G.shown)/4000);
   ctx.save();ctx.translate(LW/2,142);ctx.scale(pulse,pulse);ctx.strokeText(sc,0,0);

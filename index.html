@@ -166,9 +166,9 @@
 <div class="screen" id="shopScr">
   <div class="panel" style="text-align:center;max-height:90vh;overflow:auto">
     <div class="lbl">Shop</div>
-    <div class="row" style="margin:6px 0"><button class="chip" id="tabStyles">Block styles</button><button class="chip" id="tabThemes">Board themes</button><button class="chip" id="tabColors">Colors</button></div>
+    <div class="row" style="margin:6px 0"><button class="chip" id="tabStyles">Block styles</button><button class="chip" id="tabThemes">Board themes</button><button class="chip" id="tabColors">Colors</button><button class="chip" id="tabMusic">Music</button></div>
     <div style="font-size:18px;font-weight:900;color:#ffd96a;margin:6px 0 4px" id="shopSparks"></div>
-    <div style="font-size:12px;opacity:.7;margin-bottom:8px">Earn ✨ sparks from daily missions. Music packs are coming next!</div>
+    <div style="font-size:12px;opacity:.7;margin-bottom:8px">Earn ✨ sparks from daily missions. Block styles, themes, colors and music!</div>
     <div id="shopList"></div>
     <button class="chip" id="bShopBack" style="margin-top:8px">Back</button>
   </div>
@@ -400,9 +400,9 @@ MU.danger=0;
 /* ---- original music: four styles, each a looping song with drums, bass, chords and melody ---- */
 MU.style="bounce";
 const MSTYLES=["auto","bounce","dream","chill","arcade"];
-const MBPM={bounce:112,dream:78,chill:86,arcade:138};
-function desiredStyle(){if(opt.mstyle!=="auto")return opt.mstyle;if(state!=="play"||typeof G==="undefined"||!G)return"dream";return G.mstyle||"bounce"}
-let LASTSTYLE="";function pickStyle(){const pool=["bounce","dream","chill","arcade"].filter(x=>x!==LASTSTYLE);LASTSTYLE=pool[Math.floor(Math.random()*pool.length)];return LASTSTYLE}
+const MBPM={bounce:112,dream:78,chill:86,arcade:138,retro:150,spooky:90,jazz:112,piano:74,festive:98};
+function desiredStyle(){if(MU.pv&&performance.now()<MU.pvEnd)return MU.pv;if(opt.mstyle!=="auto"){const m=opt.mstyle;if(MPLAY[m]&&(["bounce","dream","chill","arcade"].includes(m)||isOwned(m)))return m;return"dream"}if(state!=="play"||typeof G==="undefined"||!G)return"dream";return G.mstyle||"bounce"}
+let LASTSTYLE="";function pickStyle(){const pool=["bounce","dream","chill","arcade"].concat(MUSIC_PACKS.filter(m=>isOwned(m.id)).map(m=>m.id)).filter(x=>x!==LASTSTYLE);LASTSTYLE=pool[Math.floor(Math.random()*pool.length)];return LASTSTYLE}
 function mn(t,m,d,type,v,dest,att){mnote(t,mf(m),d,type,v,dest||MU.master,att===undefined?.006:att)}
 function mnoise(t,d,freq,q,v,type){const a=AC;if(!MU.nbuf){const len=a.sampleRate,buf=a.createBuffer(1,len,a.sampleRate),ch=buf.getChannelData(0);for(let i=0;i<len;i++)ch[i]=Math.random()*2-1;MU.nbuf=buf}
   const src=a.createBufferSource();src.buffer=MU.nbuf;const f=a.createBiquadFilter();f.type=type||"bandpass";f.frequency.value=freq;f.Q.value=q;const g=a.createGain();
@@ -441,7 +441,47 @@ function playArcade(t,s,bar,dg){const ci=bar%4,ch=A_CH[ci];
   if(s%4===0||s===6||s===14)mn(t,A_ROOT[ci]+12,.2,"square",.05);
   if(s===0||s===8||s===10)mkick(t,.13);if(s===4||s===12)msnare(t,.075);mhat(t,s%2?.012:.022,false);
   if(s%2===0&&((bar+s)%3!==1)){const m=A_PENT[(bar*5+s)%A_PENT.length];mn(t,m,.16,"square",.032,MU.echo)}}
-const MPLAY={bounce:playBounce,dream:playDream,chill:playChill,arcade:playArcade};
+// Retro 8-bit: happy chiptune (C major)
+const R_CH=[[60,64,67],[57,60,64],[53,57,60],[55,59,62]],R_ROOT=[48,45,41,43];
+const R_MEL=[[84,0,88,0,91,0,88,0,84,0,86,0,88,0,0,0],[81,0,84,0,88,0,84,0,81,0,79,0,81,0,0,0],[77,0,81,0,84,0,81,0,77,0,79,0,81,0,84,0],[79,0,83,0,86,0,83,0,79,0,81,0,83,0,0,0]];
+function playRetro(t,s,bar,dg){const ci=bar%4,ch=R_CH[ci],m=R_MEL[ci][s];
+  if(s%2===0)mn(t,R_ROOT[ci]+(s%4===2?12:0),.1,"square",.045);mn(t,ch[s%3]+24,.06,"square",.018);
+  if(s===0||s===8)mkick(t,.13);if(s===4||s===12)msnare(t,.07);if(s%2===0)mhat(t,.015,false);
+  if(m)mn(t,m,.2,"triangle",.07,MU.echo,.003)}
+// Spooky: music box bells over a slow dark drone (D harmonic minor)
+const SP_CH=[[62,65,69],[58,62,65],[55,58,62],[57,61,64]],SP_ROOT=[38,34,43,33],SP_B=[74,77,81,82,85,86];
+function playSpooky(t,s,bar,dg,spb){const ci=bar%4,ch=SP_CH[ci];
+  if(s===0){ch.forEach(n=>mn(t,n,spb*15,"sine",.045,MU.pad,.9));mn(t,SP_ROOT[ci],spb*15,"sine",.11,MU.master,.1);mkick(t,.08)}
+  if(s===3)mkick(t,.05);
+  if(s%4===0&&((bar*5+s*3)%7<3)){const m=SP_B[(bar*2+s)%SP_B.length];mn(t,m,.9,"sine",.06,MU.echo,.004);mn(t,m+12,.5,"triangle",.02,MU.echo,.004)}
+  if(s===8)mnoise(t,spb*6,900,.6,.014,"bandpass");
+  if(s===12&&bar%4===3)mn(t,SP_B[0]+1,.8,"sine",.04,MU.echo,.01)}
+// Midnight Jazz: swing, walking bass, piano stabs (Dm9 G13 Cmaj9 A7)
+const J_CH=[[62,65,69,72],[59,65,67,71],[60,64,67,71],[61,64,67,70]],J_WALK=[[50,53,57,56],[43,47,50,49],[48,52,55,54],[45,49,52,51]],J_SC=[74,77,79,81,84,86];
+function playJazz(t,s,bar,dg,spb){const ci=bar%4,sw=(s%4===2)?spb*.55:0,tt=t+sw;
+  if(s%4===0)mn(t,J_WALK[ci][s/4],spb*3.6,"triangle",.1);
+  if(s===3||s===10)J_CH[ci].forEach(n=>{mn(tt,n+12,.28,"triangle",.03);mn(tt,n+12,.22,"sine",.02)});
+  if(s%4===0)mhat(t,.02,true);if(s%4===2)mhat(tt,.014,false);if(s===0||s===8)mkick(t,.07);if(s===4||s===12)mnoise(t,.06,3000,.8,.03);
+  if(s%2===0&&((bar*11+s*5)%7<3)){const m=J_SC[(bar+s)%J_SC.length];mn(tt,m,.3,"triangle",.06,MU.echo)}}
+// Soft Piano: slow rolling arpeggios (C Am F G)
+const P_CH=[[60,64,67,72],[57,60,64,69],[53,57,60,65],[55,59,62,67]],P_ROOT=[36,33,29,31];
+function playPiano(t,s,bar,dg,spb){const ci=bar%4,ch=P_CH[ci];
+  if(s===0){mn(t,P_ROOT[ci]+12,spb*15,"sine",.09,MU.master,.02);ch.forEach(n=>mn(t,n,spb*15,"sine",.018,MU.pad,1.2))}
+  if(s%2===0){const seq=[0,1,2,3,2,1,2,1],n=ch[seq[(s/2)%8]]+12;mn(t,n,.9,"triangle",.045,MU.echo,.006);mn(t,n,.6,"sine",.03,MU.echo,.006)}
+  if(s===8&&bar%2===0)mn(t,ch[3]+24,1.4,"sine",.05,MU.echo,.01)}
+// Holiday Bells: sleigh bells and bright chimes (G major)
+const F_CH=[[67,71,74],[64,67,71],[60,64,67],[62,66,69]],F_ROOT=[43,40,48,50],F_P=[79,81,83,86,88,91];
+const F_SEQ=[0,-1,2,3,4,-1,3,-1,2,-1,0,-1,1,2,-1,-1,3,-1,4,5,4,-1,3,2,0,-1,1,2,0,-1,-1,-1];
+function playFestive(t,s,bar,dg,spb){const ci=bar%4,ch=F_CH[ci];
+  mnoise(t,.05,s%2?7000:9000,1,s%2?.012:.02,"highpass");
+  if(s===0)mn(t,F_ROOT[ci],.35,"triangle",.1);if(s===8)mn(t,F_ROOT[ci]+7,.3,"triangle",.08);
+  if(s===4||s===12)ch.forEach(n=>mn(t,n,.14,"triangle",.03));if(s===0||s===8)mkick(t,.09);
+  if(s%2===0){const idx=F_SEQ[(bar%4)*8+s/2];if(idx>=0){mn(t,F_P[idx],.45,"sine",.06,MU.echo,.004);mn(t,F_P[idx]+12,.25,"triangle",.02,MU.echo,.004)}}}
+const MPLAY={bounce:playBounce,dream:playDream,chill:playChill,arcade:playArcade,retro:playRetro,spooky:playSpooky,jazz:playJazz,piano:playPiano,festive:playFestive};
+const MUSIC_PACKS=[{id:"retro",name:"Retro 8-bit",price:150,e:"👾",bg:["#2a1a6a","#ff4f81"]},{id:"piano",name:"Soft Piano",price:200,e:"🎹",bg:["#1a2a4a","#8ab4ff"]},{id:"jazz",name:"Midnight Jazz",price:250,e:"🎷",bg:["#1a1030","#c8863a"]},
+ {id:"spooky",name:"Spooky Tunes",price:150,ev:"halloween",e:"👻",bg:["#14041e","#ff7a1a"]},{id:"festive",name:"Holiday Bells",price:150,ev:"winter",e:"🔔",bg:["#0a3a22","#e0243a"]}];
+const EV_MUSIC={halloween:"spooky",winter:"festive"};
+function previewMusic(key){if(!opt.music){toast("Turn Music on in the menu to hear it");return}actx();musicStart();MU.pv=key;MU.pvEnd=performance.now()+7000;MU.step=0;toast("Playing a 7 second preview")}
 MU.danger=0;
 function musicTick(){if(!MU.on||!AC)return;MU.danger+=(dangerNow()-MU.danger)*.4;const want=desiredStyle();
   while(MU.next<AC.currentTime+.9){
@@ -727,6 +767,7 @@ function renderAch(){const e=earnedAch(),n=ACH.filter(a=>e[a.id]).length;$("achC
 function renderStats(){const e=earnedAch(),n=v=>(v||0).toLocaleString();
   const rows=[["Games played",n(ST.games)],["Levels & weeklies won",n(ST.wins)],["Lines cleared",n(ST.lines)],["Pure clears",n(ST.pure)],["Pieces placed",n(ST.pieces)],["Best score in one game",n(ST.score)],["Best combo","x"+n(ST.combo)],["Clean Sweeps (empty board)",n(ST.perfect)],
    ["Stars collected","★ "+totalStars()],["Journey level reached",maxLevel()+" / "+MAXLV],["Weekly challenges solved",n(ST.weekly)],["Daily Dashes finished",n(ST.dash)],["Best Dash streak",n(ST.bs)+" days"],["Days played",n(ST.days)],["Trophies",ACH.filter(a=>e[a.id]).length+" / "+ACH.length],["Sparks ✨",n(sparks())]];
+  let bd=[];try{bd=JSON.parse(store("hz_badges")||"[]")}catch(x){}bd.slice(-6).forEach(b=>rows.push(["🏅 Badge",b.replace(/ \d{4}-\d\d-\d\d$/,"")]));
   $("statList").innerHTML=rows.map(r=>'<div style="display:flex;justify-content:space-between;gap:16px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.1);font-weight:700;font-size:14px"><span style="opacity:.8">'+r[0]+'</span><span style="color:#ffd96a;font-weight:900">'+r[1]+'</span></div>').join("")}
 $("bStats").onclick=()=>{renderStats();hide("menu");show("statScr")};
 $("bStatBack").onclick=()=>{hide("statScr");show("menu")};
@@ -762,24 +803,26 @@ function owned(){let o=[];try{o=JSON.parse(store("hz_own")||"[]")}catch(e){}retu
 function isOwned(id){return id==="gem"||owned().includes(id)}
 let shopArm=null,shopTab="styles";
 function renderShop(){$("shopSparks").textContent="✨ "+sparks()+" sparks";const el=$("shopList");el.innerHTML="";
-  $("tabStyles").classList.toggle("off",shopTab!=="styles");$("tabThemes").classList.toggle("off",shopTab!=="themes");$("tabColors").classList.toggle("off",shopTab!=="colors");
-  const items=(shopTab==="styles"?STYLES:shopTab==="themes"?THEMES:COLOR_SETS).filter(it=>!it.ev||isOwned(it.id)||evActive(it.ev)),cur=shopTab==="styles"?BST:shopTab==="themes"?BTH:BCS;
+  $("tabStyles").classList.toggle("off",shopTab!=="styles");$("tabThemes").classList.toggle("off",shopTab!=="themes");$("tabColors").classList.toggle("off",shopTab!=="colors");$("tabMusic").classList.toggle("off",shopTab!=="music");
+  const items=(shopTab==="styles"?STYLES:shopTab==="themes"?THEMES:shopTab==="music"?MUSIC_PACKS:COLOR_SETS).filter(it=>!it.ev||isOwned(it.id)||evActive(it.ev)),cur=shopTab==="styles"?BST:shopTab==="themes"?BTH:shopTab==="music"?opt.mstyle:BCS;
   items.forEach(it=>{const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid "+(cur===it.id?"#ffd96a":"var(--edge)");
     const cv2=document.createElement("canvas");cv2.width=240;cv2.height=60;cv2.style.cssText="position:static;left:auto;right:auto;top:auto;bottom:auto;width:120px;height:30px;flex:none;touch-action:auto;border-radius:8px";const c2=cv2.getContext("2d");
     if(shopTab==="styles"){for(let i=0;i<4;i++){const sp=makeSpriteStyle(i,it.id),sz=44,e=sz*PADF,t=sz+2*e;c2.drawImage(sp.k,8+i*58-e,8-e,t,t)}}
+    else if(shopTab==="music"){const g=c2.createLinearGradient(0,0,240,60);g.addColorStop(0,it.bg[0]);g.addColorStop(1,it.bg[1]);c2.fillStyle=g;c2.fillRect(0,0,240,60);c2.font="38px sans-serif";c2.textAlign="center";c2.textBaseline="middle";c2.fillText(it.e,120,32)}
     else if(shopTab==="colors"){const prevSet=BCS;applyColorSet(it.id);for(let i=0;i<5;i++){const sp=makeSpriteStyle(CIDX[i],BST==="gem"?"gem":BST),sz=40,e=sz*PADF,t=sz+2*e;c2.drawImage(sp.k,6+i*46-e,10-e,t,t)}applyColorSet(prevSet)}
     else{const tc=document.createElement("canvas");tc.width=240;tc.height=427;(SCENES[it.id]||SCENES.space)(tc.getContext("2d"),240,427,mulberry(hash("scene"+it.id)));c2.drawImage(tc,0,Math.round(427*.56),240,60,0,0,240,60)}
     const nm=document.createElement("div");nm.style.cssText="flex:1;text-align:left;font-weight:800;font-size:14px";nm.textContent=it.name+(it.ev&&!isOwned(it.id)?" ⏳ "+evDaysLeft(evById(it.ev))+"d":"");
     const b=document.createElement("button");b.className="chip";b.style.cssText="flex:none;min-width:92px;padding:8px 10px";
     const own=isOwned(it.id)||it.price===0;b.textContent=cur===it.id?"✓ Equipped":own?"Equip":(shopArm===it.id?"Tap to buy":"✨ "+it.price);
     if(!own&&sparks()<it.price)b.style.opacity=".5";
-    const equip=()=>{if(shopTab==="styles"){BST=it.id;store("hz_bstyle",BST)}else if(shopTab==="themes"){BTH=it.id;store("hz_bth",BTH)}else{BCS=it.id;store("hz_bcs",BCS);applyColorSet(BCS)}};
+    const equip=()=>{if(shopTab==="styles"){BST=it.id;store("hz_bstyle",BST)}else if(shopTab==="themes"){BTH=it.id;store("hz_bth",BTH)}else if(shopTab==="music"){opt.mstyle=it.id;store("hz_mstyle",it.id);syncOpts()}else{BCS=it.id;store("hz_bcs",BCS);applyColorSet(BCS)}};
     b.onclick=()=>{if(own){equip();shopArm=null;renderShop();return}
       if(sparks()<it.price){toast("You need "+(it.price-sparks())+" more ✨ sparks. Finish daily missions!");return}
       if(shopArm!==it.id){shopArm=it.id;renderShop();return}
       store("hz_sparks",String(sparks()-it.price));const o=owned();o.push(it.id);store("hz_own",JSON.stringify(o));equip();shopArm=null;toast("Unlocked "+it.name+"!");sfx.pure();renderShop();achCheck()};
-    row.append(cv2,nm,b);el.appendChild(row)})}
+    if(shopTab==="music"){cv2.style.width="56px";cv2.style.height="14px";cv2.style.display="none";const ic=document.createElement("div");ic.textContent=it.e;ic.style.cssText="font-size:26px;flex:none;width:36px;text-align:center";const pb=document.createElement("button");pb.className="chip";pb.textContent="▶";pb.style.cssText="flex:none;padding:8px 12px";pb.onclick=()=>previewMusic(it.id);row.append(ic,nm,pb,b)}else row.append(cv2,nm,b);el.appendChild(row)})}
 $("tabStyles").onclick=()=>{shopTab="styles";shopArm=null;renderShop()};
+$("tabMusic").onclick=()=>{shopTab="music";shopArm=null;renderShop()};
 $("tabColors").onclick=()=>{shopTab="colors";shopArm=null;renderShop()};
 $("tabThemes").onclick=()=>{shopTab="themes";shopArm=null;renderShop()};
 $("bShop").onclick=()=>{shopArm=null;renderShop();hide("menu");show("shopScr")};
@@ -934,7 +977,7 @@ function endGame(){
     streakTxt="🔥 "+r.sk+"-day streak"+(r.badge?"  ·  "+r.badge+"!":"");$("bAgain").textContent="TRY FOR A BETTER SCORE"}
   else if(m==="event"){const e=evById(c.ev),key=e.id+"-"+new Date().getFullYear();let evd={};try{evd=JSON.parse(store("hz_ev")||"{}")}catch(x){}
     if(G.won){sfx.pure();title=e.emoji+" "+e.name+" cleared!";info="Solved with "+G.placed+" pieces";
-      if(!evd[key]){evd[key]=1;store("hz_ev",JSON.stringify(evd));ST.events=(ST.events||0)+1;store("hz_sparks",String(sparks()+100));got.push(randBoost(),randBoost());const ow=owned();if(!ow.includes("cs_"+e.id)){ow.push("cs_"+e.id);store("hz_own",JSON.stringify(ow))}streakTxt="+100 ✨ and the "+e.name+" colors unlocked!"}else streakTxt="Already cleared this event. Nice replay!"}
+      if(!evd[key]){evd[key]=1;store("hz_ev",JSON.stringify(evd));ST.events=(ST.events||0)+1;store("hz_sparks",String(sparks()+100));got.push(randBoost(),randBoost());const ow=owned();if(!ow.includes("cs_"+e.id))ow.push("cs_"+e.id);const emp=EV_MUSIC[e.id];if(emp&&!ow.includes(emp))ow.push(emp);store("hz_own",JSON.stringify(ow));streakTxt="+100 ✨ and the "+e.name+" colors"+(emp?" + music":"")+" unlocked!"}else streakTxt="Already cleared this event. Nice replay!"}
     else{sfx.over();title=e.emoji+" "+e.name+": not yet";info="Lines "+Math.min(G.lines,c.goalLines)+"/"+c.goalLines+(c.goalPure?" · Pure "+Math.min(G.pure,c.goalPure)+"/"+c.goalPure:"")+" - no room left";$("bAgain").textContent="TRY AGAIN"}}
   else{const goalTxt="Lines "+Math.min(G.lines,c.goalLines)+"/"+c.goalLines+(c.goalPure?"  ·  Pure "+Math.min(G.pure,c.goalPure)+"/"+c.goalPure:"");
     if(G.won){sfx.pure();const st=starsFor();G.stars=st;stars="★".repeat(st)+"☆".repeat(3-st);info="Solved with "+G.placed+" pieces";
@@ -1109,11 +1152,11 @@ $("bHow").onclick=()=>{hide("menu");show("how")};$("bHowOk").onclick=()=>{hide("
 $("tGfx").onclick=()=>{GFX=GFX==="auto"?"high":GFX==="high"?"low":"auto";store("hz_gfx",GFX);if(GFX==="auto")Q=2;applyQ();syncOpts();toast("Graphics: "+(GFX==="auto"?"auto (adjusts to your phone)":GFX==="high"?"high quality":"battery saver / fast"))};
 $("tMusic").onclick=()=>{opt.music=!opt.music;store("hz_music",opt.music?"1":"0");syncOpts();if(opt.music)musicStart();else musicStop()};
 $("tVibe").onclick=()=>{opt.vibe=!opt.vibe;store("hz_vibe",opt.vibe?"1":"0");syncOpts();if(opt.vibe){vib([120,60,120]);if(!canVibe())toast("This phone or browser does not allow vibration")}};
-$("tMStyle").onclick=()=>{const i=MSTYLES.indexOf(opt.mstyle);opt.mstyle=MSTYLES[(i+1)%MSTYLES.length];store("hz_mstyle",opt.mstyle);syncOpts()};
+$("tMStyle").onclick=()=>{const L=MSTYLES.concat(MUSIC_PACKS.filter(m=>isOwned(m.id)).map(m=>m.id)),i=L.indexOf(opt.mstyle);opt.mstyle=L[(i+1)%L.length];store("hz_mstyle",opt.mstyle);syncOpts()};
 $("tSound").onclick=()=>{opt.sound=!opt.sound;store("hz_sound",opt.sound?"1":"0");syncOpts();if(opt.sound)sfx.pick()};
 $("tCB").onclick=()=>{opt.cb=!opt.cb;store("hz_cb",opt.cb?"1":"0");syncOpts()};
 function syncOpts(){$("tGfx").textContent="Graphics: "+GFX;
-  $("tMStyle").textContent="Music style: "+(opt.mstyle==="auto"?"random each level":opt.mstyle);$("tMStyle").classList.toggle("off",!opt.music);
+  $("tMStyle").textContent="Music style: "+(opt.mstyle==="auto"?"random each level":((MUSIC_PACKS.find(m=>m.id===opt.mstyle)||{name:opt.mstyle}).name));$("tMStyle").classList.toggle("off",!opt.music);
   $("tVibe").textContent="Vibrate: "+(opt.vibe?(canVibe()?"on":"on (not supported here)"):"off");$("tVibe").classList.toggle("off",!opt.vibe);
   $("tMusic").textContent="Music: "+(opt.music?"on":"off");$("tMusic").classList.toggle("off",!opt.music);
   $("tSound").textContent="Sound: "+(opt.sound?"on":"off");$("tSound").classList.toggle("off",!opt.sound);

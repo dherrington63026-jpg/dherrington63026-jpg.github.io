@@ -556,7 +556,7 @@ function dashStart(){store("hz_name",$("nameIn").value);const i=dashInfo();
   startGame("dash")}
 $("bCatchYes").onclick=async()=>{const i=dashInfo();
   if(CATCHUP_PRICE_ON){let ok=false;try{ok=await buyCatchUp(i.missed)}catch(e){}if(!ok){toast("Purchases are coming soon");return}}
-  store("hz_dstreak",String(i.streak+i.missed));store("hz_dlast",yesterdayDay());hide("catchScr");startGame("dash")};
+  if(CATCHUP_PRICE_ON)recordSpend(0.99*i.missed);store("hz_dstreak",String(i.streak+i.missed));store("hz_dlast",yesterdayDay());hide("catchScr");startGame("dash")};
 $("bCatchNo").onclick=()=>{store("hz_dstreak","0");hide("catchScr");startGame("dash")};
 function dashFinish(){const i=dashInfo(),d=G.date;let sk=i.streak,got=[],badge="";const first=i.last!==d;
   if(first){if(i.last&&i.missed>=1)sk=0;sk+=1;store("hz_dstreak",String(sk));store("hz_dlast",d);
@@ -598,10 +598,16 @@ const ACH=[
  {id:"dstreak3",g:"Progress",n:"Heating Up",d:"3-day Dash streak",r:20,f:()=>(ST.bs||0)>=3},
  {id:"dstreak7",g:"Progress",n:"On Fire",d:"7-day Dash streak",r:40,f:()=>(ST.bs||0)>=7},
  {id:"dstreak30",g:"Progress",n:"Unstoppable",d:"30-day Dash streak",r:120,b:1,f:()=>(ST.bs||0)>=30},
+ {id:"spend1",g:"Supporter",n:"Supporter",d:"Spend $1 in the game",r:60,f:()=>(ST.spent||0)>=0.99},
+ {id:"spend5",g:"Supporter",n:"Patron",d:"Spend $5 in the game",r:150,f:()=>(ST.spent||0)>=5},
+ {id:"spend10",g:"Supporter",n:"Champion",d:"Spend $10 in the game",r:300,b:1,f:()=>(ST.spent||0)>=10},
+ {id:"spend20",g:"Supporter",n:"VIP",d:"Spend $20 in the game",r:600,b:1,f:()=>(ST.spent||0)>=20},
+ {id:"spend100",g:"Supporter",n:"Huezel Legend",d:"Spend $100 in the game",r:3000,b:1,f:()=>(ST.spent||0)>=100},
  {id:"nobooster",g:"Secret",n:"Pure Skill",d:"Win a level without any booster",r:30,sec:1,f:()=>(ST.nb||0)>=1},
  {id:"owl",g:"Secret",n:"Night Owl",d:"Play between midnight and 4 AM",r:20,sec:1,f:()=>!!ST.owl},
  {id:"allmis",g:"Secret",n:"Mission Master",d:"Finish all 3 daily missions on 7 days",r:60,sec:1,f:()=>(ST.allm||0)>=7},
  {id:"fashion",g:"Secret",n:"Fashionista",d:"Own 3 shop items",r:30,sec:1,f:()=>owned().length>=3}];
+function recordSpend(usd){ST.spent=Math.round(((ST.spent||0)+usd)*100)/100;saveST();achCheck()}
 function earnedAch(){let o={};try{o=JSON.parse(store("hz_ach")||"{}")}catch(e){}return o}
 const achQ=[];let achBusy=false;
 function achShow(){if(achBusy||!achQ.length)return;achBusy=true;const a=achQ.shift(),b=$("achBanner");

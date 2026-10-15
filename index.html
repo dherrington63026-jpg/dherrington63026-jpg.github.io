@@ -458,14 +458,14 @@ function playSpooky(t,s,bar,dg,spb){const ci=bar%4,ch=SP_CH[ci];
   if(s%4===0&&((bar*5+s*3)%7<3)){const m=SP_B[(bar*2+s)%SP_B.length];mn(t,m,.9,"sine",.06,MU.echo,.004);mn(t,m+12,.5,"triangle",.02,MU.echo,.004)}
   if(s===8)mnoise(t,spb*6,900,.6,.014,"bandpass");
   if(s===12&&bar%4===3)mn(t,SP_B[0]+1,.8,"sine",.04,MU.echo,.01)}
-// Midnight Jazz: gentle lounge swing, all notes chosen to sound good together (Dm7 G7 Cmaj7 Am7, C pentatonic melody)
-const J_CH=[[62,65,69,72],[62,65,67,71],[64,67,71,72],[64,67,69,72]],J_ROOT=[38,43,36,45],J_SC=[72,74,76,79,81,84];
-const J_MEL=[[76,0,0,79,0,76,0,0,74,0,0,72,0,0,0,0],[74,0,0,76,0,79,0,0,76,0,0,74,0,0,0,0],[72,0,0,76,0,79,0,0,84,0,0,81,0,0,0,0],[81,0,0,79,0,76,0,0,74,0,0,72,0,0,0,0]];
-function playJazz(t,s,bar,dg,spb){const ci=bar%4,sw=(s%4===2)?spb*.45:0,tt=t+sw,r=J_ROOT[ci];
-  if(s===0)mn(t,r+12,spb*3.8,"triangle",.1);if(s===4)mn(t,r+19,spb*3.8,"triangle",.08);if(s===8)mn(t,r+24,spb*3.8,"triangle",.08);if(s===12)mn(t,r+19,spb*3.8,"triangle",.08);
-  if(s===4||s===10)J_CH[ci].forEach(n=>{mn(tt,n,.5,"sine",.03);mn(tt,n+12,.4,"triangle",.012)});
-  if(s%4===2)mhat(tt,.012,false);if(s===0||s===8)mkick(t,.06);if(s===4||s===12)mnoise(t,.08,2500,.8,.02);
-  const m=J_MEL[ci][s];if(m){mn(tt,m,.5,"sine",.07,MU.echo,.01);mn(tt,m,.4,"triangle",.025,MU.echo,.01)}}
+// Midnight Jazz: slow, smooth lounge. Sustained chords, simple bass, one clear tune (Dm7 G7 Cmaj7 Am7). No echo, so every note lands on the beat.
+const J_CH=[[53,57,60,64],[53,55,59,62],[55,59,60,64],[52,55,60,64]],J_ROOT=[38,43,36,45];
+const J_MEL=[[74,0,0,0,72,0,0,0,69,0,0,0,72,0,0,0],[71,0,0,0,69,0,0,0,67,0,0,0,71,0,0,0],[72,0,0,0,76,0,0,0,79,0,0,0,76,0,0,0],[76,0,0,0,72,0,0,0,69,0,0,0,72,0,0,0]];
+function playJazz(t,s,bar,dg,spb){const ci=bar%4,r=J_ROOT[ci];
+  if(s===0){J_CH[ci].forEach(n=>{mn(t,n+12,spb*15,"sine",.035,MU.pad,.35);mn(t,n,spb*15,"triangle",.012,MU.pad,.5)});mn(t,r+12,spb*7,"triangle",.1,MU.master,.03)}
+  if(s===8)mn(t,r+19,spb*7,"triangle",.08,MU.master,.03);
+  if(s%2===0)mhat(t,s%4===0?.008:.014,false);if(s===0)mkick(t,.05);
+  const m=J_MEL[ci][s];if(m){mn(t,m,spb*3.6,"sine",.075,MU.master,.02);mn(t,m,spb*3.4,"triangle",.022,MU.master,.02)}}
 // Soft Piano: slow rolling arpeggios (C Am F G)
 const P_CH=[[60,64,67,72],[57,60,64,69],[53,57,60,65],[55,59,62,67]],P_ROOT=[36,33,29,31];
 function playPiano(t,s,bar,dg,spb){const ci=bar%4,ch=P_CH[ci];

@@ -54,6 +54,8 @@
     box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.5);backdrop-filter:blur(10px);transition:transform .12s,filter .12s}
   .btn.pulse{animation:npulse 1.4s infinite}
   .btn:hover{filter:brightness(1.15)}.btn:active{transform:scale(.96)}
+  .btn.dash{background:linear-gradient(180deg,#7ee8ff,#2f9bff 55%,#5a3dff);border-color:#c8f2ff;color:#fff;font-size:22px}
+  .btn.dash.pulse{animation:npulse 1.4s infinite}
   .btn.hot{background:linear-gradient(180deg,#ff6a88,#ff3d5a 55%,#c4194a);border-color:#ffb3c2}
   .btn.gold{background:linear-gradient(180deg,#ffe27a,#ffc21a 55%,#d17a00);border-color:#fff1b0;color:#3a2200}
   .btn small{display:block;font-weight:600;font-size:12px;letter-spacing:.1em;opacity:.8;margin-top:6px}
@@ -80,6 +82,7 @@
   <p class="tag">Color block puzzle</p>
   <h1 class="logo">HUEZEL</h1>
   <div style="height:8px"></div>
+  <button class="btn dash" id="bDash">🔥 DAILY DASH<small id="dashSub">15 pieces · same for everyone</small></button>
   <button class="btn hot" id="bStage">JOURNEY<small id="stageSub">level 1</small></button>
   <button class="btn gold" id="bDaily">WEEKLY CHALLENGE<small id="dailySub">very hard · new every week</small></button>
   <button class="btn" id="bClassic">CLASSIC<small>endless, chase your best</small></button>
@@ -139,6 +142,16 @@
 
 <div class="screen" id="lvl">
   <div class="panel" style="text-align:center"><div id="lvlBody"></div></div>
+</div>
+
+<div class="screen" id="catchScr">
+  <div class="panel" style="text-align:center">
+    <div class="lbl">Keep your streak</div>
+    <div style="font-size:26px;font-weight:900;margin:8px 0" id="catchTitle"></div>
+    <div style="font-weight:700;line-height:1.5;opacity:.92;margin-bottom:14px" id="catchTxt"></div>
+    <button class="btn gold" id="bCatchYes" style="width:100%;margin-bottom:10px"></button>
+    <button class="chip" id="bCatchNo">Start my streak over</button>
+  </div>
 </div>
 
 <div class="screen" id="intro">
@@ -466,13 +479,38 @@ function levelRewards(L,t,firstClear,stars,prevStars){const got=[];
   if(t===2&&stars===3&&prevStars<3)got.push(randBoost());
   return got}
 function nextTarget(L,t){return t<2?{L,t:t+1}:{L:L+1,t:0}}
+const DASH_PIECES=15,CATCHUP_PRICE_ON=false;
+function dayDiff(a,b){const f=x=>{const q=x.split("-").map(Number);return Date.UTC(q[0],q[1]-1,q[2])};return Math.round((f(b)-f(a))/864e5)}
+function yesterdayDay(){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-1);return ymd(d)}
+function dashInfo(){const d=todayStr(),last=store("hz_dlast")||"",streak=+store("hz_dstreak")||0,played=last===d;
+  const missed=(last&&!played)?Math.max(0,dayDiff(last,d)-1):0;return{d,last,streak,played,missed,dead:missed>3}}
+function dashStart(){store("hz_name",$("nameIn").value);const i=dashInfo();
+  if(!i.played&&i.streak>0&&i.missed>=1&&i.missed<=3){
+    $("catchTitle").textContent="You missed "+i.missed+" day"+(i.missed>1?"s":"")+"!";
+    $("catchTxt").textContent="Your streak is "+i.streak+" day"+(i.streak>1?"s":"")+". "+(CATCHUP_PRICE_ON?"Catch up for $0.99 per missed day to keep it going.":"Catch up for FREE to keep it going (this will cost $0.99 per day later).");
+    $("bCatchYes").textContent=CATCHUP_PRICE_ON?"CATCH UP · $"+(0.99*i.missed).toFixed(2):"CATCH UP FREE";
+    show("catchScr");return}
+  startGame("dash")}
+$("bCatchYes").onclick=async()=>{const i=dashInfo();
+  if(CATCHUP_PRICE_ON){let ok=false;try{ok=await buyCatchUp(i.missed)}catch(e){}if(!ok){toast("Purchases are coming soon");return}}
+  store("hz_dstreak",String(i.streak+i.missed));store("hz_dlast",yesterdayDay());hide("catchScr");startGame("dash")};
+$("bCatchNo").onclick=()=>{store("hz_dstreak","0");hide("catchScr");startGame("dash")};
+function dashFinish(){const i=dashInfo(),d=G.date;let sk=i.streak,got=[],badge="";const first=i.last!==d;
+  if(first){if(i.last&&i.missed>=1)sk=0;sk+=1;store("hz_dstreak",String(sk));store("hz_dlast",d);
+    const n=sk===3?1:sk===7?2:sk===14?3:(sk>=30&&sk%30===0)?5:0;
+    for(let k=0;k<n;k++)got.push(randBoost());
+    if(sk===14)badge="🏅 14-day badge";if(sk>=30&&sk%30===0)badge="🏆 "+sk+"-day badge";
+    if(badge){let b=[];try{b=JSON.parse(store("hz_badges")||"[]")}catch(e){}b.push(badge.slice(3)+" "+d);store("hz_badges",JSON.stringify(b))}}
+  else sk=i.streak;
+  return{got,badge,sk,first}}
 function startGame(mode,stage,tier){
   const d=mode==="daily"?weekStr():todayStr();let cfg,seedBase=Math.random().toString(36).slice(2);
   if(mode==="stage"){const L=stage||1,t=tier||0;cfg=levelCfg(L,t);const key=L+"-"+t,rt=(startGame.retry&&startGame.retry.key===key)?startGame.retry.r:0;seedBase="lv"+L+"t"+t+"r"+rt}
   else if(mode==="daily"){cfg=dailyCfg(d);seedBase="huezel-"+d}
+  else if(mode==="dash"){cfg={kind:"dash",colors:4,stones:0,goalLines:0,goalPure:0,hard:.25,bias:.55,pieces:DASH_PIECES};seedBase="dash-"+d}
   else cfg={kind:"classic",colors:4,stones:0,goalLines:0,goalPure:0,hard:0,bias:0};
   N=cfg.size||8;CELL=640/N;
-  G={mode,cfg,board:newBoard(),score:0,shown:0,best:+store("hz_best_"+mode)||0,combo:0,bestCombo:0,pure:0,lines:0,placed:0,turn:0,pieces:[],drag:null,
+  G={mode,cfg,board:newBoard(),score:0,shown:0,best:+store(mode==="dash"?"hz_dbest_"+d:"hz_best_"+mode)||0,combo:0,bestCombo:0,pure:0,lines:0,placed:0,turn:0,pieces:[],drag:null,
      undo:null,undoUsed:false,date:d,over:false,won:false,overT:0,seedBase,lastScoreAnim:0};
   if(cfg.stones)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
   if(cfg.design){applyDesign(G.board,cfg.design);G.pre=copyBoard(G.board)}
@@ -532,8 +570,9 @@ function place(p,r0,c0){
   p.used=true;G.placed++;G.score+=p.s.n;sfx.place(p.s.n);vib(26+p.s.n*4);fx.punch=Math.max(fx.punch,.012+.003*p.s.n);
   const cx=BX+(c0+p.s.w/2)*CELL,cy=BY+(r0+p.s.h/2)*CELL;burst(cx,cy,p.color,6+p.s.n,.5);sparkle(cx,cy,2+Math.floor(p.s.n/2),COLORS[p.color].light);ring(cx,cy,COLORS[p.color].light,120+30*p.s.n,.5,7);
   resolve();G.idle=0;G.hint=null;checkBest();
-  if(G.cfg.kind!=="classic"&&G.lines>=G.cfg.goalLines&&G.pure>=G.cfg.goalPure){G.over=true;G.won=true;G.overT=0;confetti();ring(LW/2,BY+320,"#ffd96a",800,1,14);
+  if((G.cfg.kind==="stage"||G.cfg.kind==="daily")&&G.lines>=G.cfg.goalLines&&G.pure>=G.cfg.goalPure){G.over=true;G.won=true;G.overT=0;confetti();ring(LW/2,BY+320,"#ffd96a",800,1,14);
     [523,659,784,1047,1319].forEach((f,i)=>tone(f,.4,"triangle",.12,null,i*.09));floatText(LW/2,BY+300,"GOAL REACHED!","#ffd96a",70);setTimeout(()=>endGame(),1500);return}
+  if(G.cfg.kind==="dash"&&G.placed>=G.cfg.pieces){G.over=true;G.overT=0;G.done=true;setTimeout(()=>endGame(),900);return}
   if(G.pieces.every(q=>q.used))nextSet();
   if(!G.over&&!G.pieces.some(q=>!q.used&&anyFit(G.board,q.s))){G.over=true;G.overT=0;setTimeout(()=>endGame(),900)}}
 function findHint(){let best=null,bs=-1;
@@ -588,10 +627,13 @@ function parFor(c){return Math.ceil(c.goalLines*2)+c.goalPure*2+4}
 function starsAt(c,u){const par=parFor(c);return u<=par?3:(u<=Math.floor(par*1.5)?2:1)}
 function starsFor(){return starsAt(G.cfg,G.placed)}
 function endGame(){
-  state="over";const m=G.mode,c=G.cfg;let best=+store("hz_best_"+m)||0;const isBest=G.score>best;if(isBest){best=G.score;store("hz_best_"+m,String(best))}
+  state="over";const m=G.mode,c=G.cfg;const bkey=m==="dash"?"hz_dbest_"+G.date:"hz_best_"+m;let best=+store(bkey)||0;const isBest=G.score>best;if(isBest){best=G.score;store(bkey,String(best))}
   G.best=best;let streakTxt="",info="",stars="",title="";let got=[];
   $("bNext").style.display="none";$("bAgain").textContent="PLAY AGAIN";
   if(m==="classic"){title=isBest?"New best!":"Game over";sfx.over()}
+  else if(m==="dash"){const r=dashFinish();got=r.got;sfx.pure();title=isBest?"New best today!":"Dash complete!";
+    info=(G.done?"All "+c.pieces+" pieces placed":"No room left after "+G.placed+" pieces")+(r.first?"":"  ·  streak already counted today");
+    streakTxt="🔥 "+r.sk+"-day streak"+(r.badge?"  ·  "+r.badge+"!":"");$("bAgain").textContent="TRY FOR A BETTER SCORE"}
   else{const goalTxt="Lines "+Math.min(G.lines,c.goalLines)+"/"+c.goalLines+(c.goalPure?"  ·  Pure "+Math.min(G.pure,c.goalPure)+"/"+c.goalPure:"");
     if(G.won){sfx.pure();const st=starsFor();G.stars=st;stars="★".repeat(st)+"☆".repeat(3-st);info="Solved with "+G.placed+" pieces";
       if(m==="stage"){const L=c.level,t=c.tier,prev=lvStars(L,t);PROG[L]=PROG[L]||[0,0,0];PROG[L][t]=Math.max(prev,st);saveProg();
@@ -607,7 +649,7 @@ function endGame(){
       if(m==="daily"){const d=G.date;store("hz_att_"+d,String((+store("hz_att_"+d)||0)+1))}}}
   $("bMap").style.display=m==="stage"?"inline-block":"none";
   got.forEach(k=>addBoost(k));$("ovReward").textContent=got.length?"Reward: "+got.map(boostIcon).join(" "):"";
-  if(G.won&&!G.boostUsed&&m!=="classic")info+="  ·  no boosters used";
+  if(G.won&&!G.boostUsed&&m!=="classic"&&m!=="dash")info+="  ·  no boosters used";
   $("ovTitle").textContent=title;$("ovStars").textContent=stars;$("ovInfo").textContent=info;
   $("ovScore").textContent=G.score.toLocaleString();$("ovBest").textContent="Best "+best.toLocaleString();
   $("ovPure").firstChild.textContent=G.pure;$("ovLines").firstChild.textContent=G.lines;$("ovCombo").firstChild.textContent=G.bestCombo;
@@ -615,13 +657,15 @@ function endGame(){
 function shareText(){
   const name=($("nameIn").value||"").trim();let grid="";
   for(let r=0;r<N;r++){let line="";for(let c=0;c<N;c++){const v=G.board[r][c];line+=v===null?"⬛":COLORS[v].emoji}grid+=line+"\n"}
-  const mode=G.mode==="daily"?"Weekly "+(G.cfg.design?designTitle(G.cfg.design):"Challenge")+" ("+weekLabel(G.date)+")":(G.mode==="stage"?"Level "+G.cfg.level+" "+TIERS[G.cfg.tier].name:"Classic");
+  const mode=G.mode==="dash"?"Daily Dash ("+G.date+")":G.mode==="daily"?"Weekly "+(G.cfg.design?designTitle(G.cfg.design):"Challenge")+" ("+weekLabel(G.date)+")":(G.mode==="stage"?"Level "+G.cfg.level+" "+TIERS[G.cfg.tier].name:"Classic");
   const head=(name?name+"'s ":"")+"Huezel "+mode;
-  const res=G.mode==="classic"?"":(G.won?("✅ Solved in "+G.placed+" pieces "+"★".repeat(G.stars||1)+(G.boostUsed?"":" 🏅 no boosters")+"\n"):("❌ "+Math.min(G.lines,G.cfg.goalLines)+"/"+G.cfg.goalLines+" lines"+(G.cfg.goalPure?" · "+Math.min(G.pure,G.cfg.goalPure)+"/"+G.cfg.goalPure+" Pure":"")+"\n"));
+  const res=(G.mode==="classic"||G.mode==="dash")?(G.mode==="dash"?"🔥 "+(+store("hz_dstreak")||0)+"-day streak\n":""):(G.won?("✅ Solved in "+G.placed+" pieces "+"★".repeat(G.stars||1)+(G.boostUsed?"":" 🏅 no boosters")+"\n"):("❌ "+Math.min(G.lines,G.cfg.goalLines)+"/"+G.cfg.goalLines+" lines"+(G.cfg.goalPure?" · "+Math.min(G.pure,G.cfg.goalPure)+"/"+G.cfg.goalPure+" Pure":"")+"\n"));
   return head+"\n"+res+G.score.toLocaleString()+" pts  ·  "+G.pure+" Pure clears  ·  combo x"+G.bestCombo+"\n"+grid+"Play: huezel.com"}
 function refreshMenu(){const st=+store("hz_streak")||0,last=store("hz_last_daily"),t=weekStr(),att=+store("hz_att_"+t)||0;
   const dk=designKeyFor(weekStr());$("bDaily").firstChild.textContent="WEEKLY: "+DESIGNS[dk].emoji+" "+DESIGNS[dk].name.toUpperCase();
   $("dailySub").textContent=(last===t?"solved this week ✓":(att?att+" attempt"+(att>1?"s":"")+" this week":"very hard · new every Monday"))+(st?" · "+st+" wk streak":"");
+  const di=dashInfo();$("bDash").firstChild.textContent="🔥 DAILY DASH"+(di.streak&&!di.dead?" · "+di.streak+" day"+(di.streak>1?"s":""):"");$("bDash").classList.toggle("pulse",!di.played);
+  $("dashSub").textContent=di.played?"done today ✓ · best "+(+store("hz_dbest_"+di.d)||0).toLocaleString()+" · tap to beat it":(di.streak&&di.missed>=1&&di.missed<=3?"you missed "+di.missed+" day"+(di.missed>1?"s":"")+"! catch up and keep your streak":(di.streak&&!di.dead?"play today to keep your streak!":"15 pieces · same for everyone · new daily"));
   const firstTime=!store("hz_tut_done")&&totalStars()===0;$("bStage").classList.toggle("pulse",firstTime);
   $("stageSub").textContent=firstTime?"tap here to start!":"level "+maxLevel()+" · "+totalStars()+" stars";
   $("menuStars").textContent="★ "+totalStars();$("mapStars").textContent="★ "+totalStars();
@@ -636,6 +680,10 @@ function tipFor(c){
   if(c.stones&&ix<=9)return"New: gray STONES! A line with a stone can't be Pure, but it still clears. Plan your Pure lines in stone-free rows and columns.";
   return"Keep each line ONE color. Glowing lines and the star on a piece show where a Pure clear is close.";}
 function showIntro(){if(G.cfg.kind==="classic")return;const c=G.cfg;
+  if(c.kind==="dash"){$("inKind").textContent="Daily Dash · "+G.date;$("inGoal").textContent=c.pieces+" pieces. Score big!";
+    $("inChips").innerHTML='<span class="chip" style="cursor:default">same pieces for everyone</span> <span class="chip" style="cursor:default">no boosters</span>';
+    $("inTip").textContent="Place all "+c.pieces+" shapes and score as many points as you can. Pure clears (one-color lines) and combos score the most. Plan ahead: the run ends early if nothing fits!";
+    $("inStars").textContent="";$("inExtra").textContent="Finish a run each day to grow your streak. Streak rewards: 3 days, 7, 14 and 30!";show("intro");return}
   $("inKind").textContent=c.kind==="daily"?"Weekly · "+designTitle(c.design)+" week · "+weekLabel(G.date):"Level "+c.level+" · "+TIERS[c.tier].name;
   $("inGoal").textContent=goalText(c);
   $("inChips").innerHTML=(c.goalPure?'<span class="chip" style="cursor:default;color:#ffd96a;border-color:#ffd96a">★ '+c.goalPure+' PURE clear'+(c.goalPure>1?"s":"")+' needed</span> ':"")+
@@ -725,6 +773,7 @@ if(NATIVE){try{Capacitor.Plugins.Preferences.keys().then(r=>{const ks=(r.keys||[
 
 /* ============ screens ============ */
 function show(id){$(id).classList.add("show")}function hide(id){$(id).classList.remove("show")}
+$("bDash").onclick=dashStart;
 $("bClassic").onclick=()=>{store("hz_name",$("nameIn").value);startGame("classic")};
 $("bStage").onclick=()=>{store("hz_name",$("nameIn").value);openMap()};
 $("bNext").onclick=()=>{const nt=G.next;if(nt)startGame("stage",nt.L,nt.t)};
@@ -754,8 +803,8 @@ function pieceRect(p){const[sx,sy]=slotCenter(p.slot);return{x:sx-120,y:sy-118,w
 cv.addEventListener("pointerdown",e=>{audio();if(state!=="play"||G.over||G.drag)return;const[x,y]=toL(e);
   if(G.tut&&x>=18&&x<=128&&y>=118&&y<=154){store("hz_tut_done","1");G.tut=null;toast("Tutorial skipped");return}
   if(Math.hypot(x-60,y-70)<44){if(G.mode==="stage"){openMap()}else{state="menu";show("menu");refreshMenu()}return}
-  if(G.cfg.kind!=="classic"&&x>=590&&x<=700&&y>=30&&y<=112){const pr=parFor(G.cfg);toast("★★★ = "+pr+" pieces or fewer · ★★ = "+Math.floor(pr*1.5)+" or fewer");return}
-  for(let i=0;i<BOOSTS.length;i++){const[bx,by]=boostPos(i);if(Math.hypot(x-bx,y-by)<44){boostTap(BOOSTS[i].k);return}}
+  if((G.cfg.kind==="stage"||G.cfg.kind==="daily")&&x>=590&&x<=700&&y>=30&&y<=112){const pr=parFor(G.cfg);toast("★★★ = "+pr+" pieces or fewer · ★★ = "+Math.floor(pr*1.5)+" or fewer");return}
+  if(G.cfg.kind!=="dash")for(let i=0;i<BOOSTS.length;i++){const[bx,by]=boostPos(i);if(Math.hypot(x-bx,y-by)<44){boostTap(BOOSTS[i].k);return}}
   if(G.tgt){targetTap(x,y);return}
   for(const p of G.pieces){if(p.used)continue;const r=pieceRect(p);if(x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h){
     G.drag={p,x,y,sx:x,sy:y,t:0,sx0:p.x,sy0:p.y,mag:0,key:""};cv.setPointerCapture(e.pointerId);sfx.pick();vib(22);break}}});
@@ -833,7 +882,7 @@ function tipBar(pv){let msg="",col="rgba(255,255,255,.75)",size=26;
   else if(G.cues&&G.cues.length){msg="Glowing line = one color so far. Keep going!";col="#ffe9a8"}
   else if(G.cfg.kind!=="classic"&&G.cfg.goalPure&&(G.cfg.kind==="daily"||(G.cfg.idx||G.cfg.n)<=8)){msg="Fill a whole line with ONE color = PURE";col="rgba(255,255,255,.7)"}
   if(!msg)return;ctx.save();ctx.font="800 "+size+"px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=col;ctx.shadowColor="rgba(0,0,0,.7)";ctx.shadowBlur=8;ctx.fillText(msg,LW/2,BY+N*CELL+44);ctx.restore()}
-function boosterBar(){BOOSTS.forEach((b,i)=>{const[x,y]=boostPos(i),n=BO[b.k],act=G.tgt&&G.tgt.k===b.k,pu=.5+.5*Math.sin(bgT*6);ctx.save();ctx.globalAlpha=n?1:.4;
+function boosterBar(){if(G.cfg.kind==="dash")return;BOOSTS.forEach((b,i)=>{const[x,y]=boostPos(i),n=BO[b.k],act=G.tgt&&G.tgt.k===b.k,pu=.5+.5*Math.sin(bgT*6);ctx.save();ctx.globalAlpha=n?1:.4;
     const g=ctx.createLinearGradient(0,y-38,0,y+38);g.addColorStop(0,act?"rgba(255,226,122,.65)":"rgba(255,255,255,.3)");g.addColorStop(1,act?"rgba(255,180,40,.25)":"rgba(255,255,255,.07)");
     ctx.fillStyle=g;ctx.strokeStyle=act?"rgba(255,226,122,"+(.6+.4*pu)+")":"rgba(255,255,255,.35)";ctx.lineWidth=act?5:2;if(act){ctx.shadowColor="#ffd96a";ctx.shadowBlur=24}
     ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();ctx.shadowBlur=0;
@@ -925,13 +974,13 @@ function drawPiece(p,lifted){const cs=CELL*p.sc;const w=p.s.w*cs,h=p.s.h*cs;cons
 function hud(){
   ctx.textAlign="center";ctx.textBaseline="middle";
   ctx.font="800 22px 'Segoe UI',system-ui,sans-serif";ctx.fillStyle="rgba(255,255,255,.6)";
-  ctx.fillText(G.mode==="daily"?"WEEKLY  "+(G.cfg.design?designTitle(G.cfg.design):weekLabel(G.date)):(G.mode==="stage"?"LEVEL "+G.cfg.level+" · "+TIERS[G.cfg.tier].name.toUpperCase():"CLASSIC"),LW/2,52);
+  ctx.fillText(G.mode==="daily"?"WEEKLY  "+(G.cfg.design?designTitle(G.cfg.design):weekLabel(G.date)):(G.mode==="stage"?"LEVEL "+G.cfg.level+" · "+TIERS[G.cfg.tier].name.toUpperCase():G.mode==="dash"?"DAILY DASH":"CLASSIC"),LW/2,52);
   ctx.font="900 112px 'Segoe UI',system-ui,sans-serif";ctx.lineWidth=14;ctx.strokeStyle="rgba(20,8,60,.85)";ctx.lineJoin="round";
   const sc=Math.round(G.shown).toLocaleString();const pulse=1+Math.min(.12,Math.abs(G.score-G.shown)/4000);
   ctx.save();ctx.translate(LW/2,142);ctx.scale(pulse,pulse);ctx.strokeText(sc,0,0);
   const tg=ctx.createLinearGradient(0,-50,0,50);tg.addColorStop(0,"#fff");tg.addColorStop(1,"#ffd96a");ctx.shadowColor="rgba(255,200,80,.55)";ctx.shadowBlur=26;ctx.fillStyle=tg;ctx.fillText(sc,0,0);ctx.restore();
   if(G.cfg.kind==="classic"){ctx.font="700 22px 'Segoe UI',system-ui,sans-serif";ctx.fillStyle="rgba(255,255,255,.65)";ctx.fillText("BEST "+Math.max(G.best,G.score).toLocaleString()+"   ·   LINES "+G.lines+"   ·   PURE "+G.pure,LW/2,214)}
-  else{const items=[["LINES",Math.min(G.lines,G.cfg.goalLines),G.cfg.goalLines]];if(G.cfg.goalPure)items.push(["PURE",Math.min(G.pure,G.cfg.goalPure),G.cfg.goalPure]);
+  else{const items=G.cfg.kind==="dash"?[["PIECES",G.placed,G.cfg.pieces]]:[["LINES",Math.min(G.lines,G.cfg.goalLines),G.cfg.goalLines]];if(G.cfg.goalPure)items.push(["PURE",Math.min(G.pure,G.cfg.goalPure),G.cfg.goalPure]);
     const pw=230,gap=20,tot=items.length*pw+(items.length-1)*gap;items.forEach((it,i)=>{const x=LW/2-tot/2+i*(pw+gap),y=196,done=it[1]>=it[2];
       ctx.save();ctx.fillStyle="rgba(10,6,40,.6)";rr(x,y,pw,40,20);ctx.fill();ctx.save();rr(x,y,pw,40,20);ctx.clip();
       const pg=ctx.createLinearGradient(x,0,x+pw,0);pg.addColorStop(0,done?"#ffe27a":"#ff6a88");pg.addColorStop(1,"#ffc21a");ctx.fillStyle=pg;ctx.globalAlpha=.9;ctx.fillRect(x,y,pw*Math.min(1,it[1]/it[2]),40);ctx.restore();
@@ -941,7 +990,7 @@ function hud(){
   if(G.cfg.kind==="classic"&&G.combo>1){ctx.fillStyle="#ffd96a";ctx.font="900 26px 'Segoe UI',system-ui,sans-serif";ctx.fillText("COMBO x"+Math.min(1+.5*(G.combo-1),4),LW/2,242)}
   // buttons
   circBtn(60,70,"☰",1);
-  if(G.cfg.kind!=="classic"){const par=parFor(G.cfg),st=starsAt(G.cfg,G.placed),x=596,y=34,w=100,h=74;ctx.save();
+  if(G.cfg.kind==="stage"||G.cfg.kind==="daily"){const par=parFor(G.cfg),st=starsAt(G.cfg,G.placed),x=596,y=34,w=100,h=74;ctx.save();
     ctx.fillStyle="rgba(10,6,40,.6)";rr(x,y,w,h,22);ctx.fill();ctx.strokeStyle="rgba(255,255,255,.3)";ctx.lineWidth=2;rr(x,y,w,h,22);ctx.stroke();
     ctx.textAlign="center";ctx.textBaseline="middle";ctx.font="900 26px 'Segoe UI',system-ui,sans-serif";
     for(let i=0;i<3;i++){ctx.fillStyle=i<st?"#ffd96a":"rgba(255,255,255,.25)";if(i<st){ctx.shadowColor="#ffd96a";ctx.shadowBlur=10}else ctx.shadowBlur=0;ctx.fillText("★",x+22+i*28,y+24)}

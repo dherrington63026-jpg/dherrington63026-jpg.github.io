@@ -221,6 +221,7 @@
     <div id="ovReward" style="font-weight:800;color:#ffd96a;margin:2px 0 8px;font-size:18px"></div>
     <div id="ovStreak" class="lbl" style="margin-bottom:12px;color:#ffd96a"></div>
     <button class="btn gold" id="bNext" style="width:100%;margin-bottom:10px;display:none">NEXT</button>
+    <button class="btn" id="bChal" style="width:100%;margin-bottom:10px;display:none">CHALLENGE A FRIEND</button>
     <button class="btn gold" id="bShare" style="width:100%;margin-bottom:10px">SHARE RESULT</button>
     <button class="btn hot" id="bAgain" style="width:100%;margin-bottom:10px">PLAY AGAIN</button>
     <div class="row"><button class="chip" id="bMap" style="display:none">Level map</button><button class="chip" id="bMenu">Menu</button></div>
@@ -692,21 +693,23 @@ $("bShop").onclick=()=>{shopArm=null;renderShop();hide("menu");show("shopScr")};
 $("bShopBack").onclick=()=>{hide("shopScr");show("menu");refreshMenu()};
 $("bMis").onclick=()=>{renderMis();hide("menu");show("misScr")};
 $("bMisBack").onclick=()=>{hide("misScr");show("menu");refreshMenu()};
-function startGame(mode,stage,tier){
-  const d=mode==="daily"?weekStr():todayStr();let cfg,seedBase=Math.random().toString(36).slice(2);
+function startGame(mode,stage,tier,opts){
+  const d=mode==="daily"?weekStr():todayStr();let cfg,seedBase=Math.random().toString(36).slice(2,10);
   if(mode==="stage"){const L=stage||1,t=tier||0;cfg=levelCfg(L,t);const key=L+"-"+t,rt=(startGame.retry&&startGame.retry.key===key)?startGame.retry.r:0;seedBase="lv"+L+"t"+t+"r"+rt}
   else if(mode==="daily"){cfg=dailyCfg(d);seedBase="huezel-"+d}
   else if(mode==="dash"){cfg={kind:"dash",colors:4,stones:0,goalLines:0,goalPure:0,hard:.25,bias:.55,pieces:DASH_PIECES};seedBase="dash-"+d}
   else cfg={kind:"classic",colors:4,stones:0,goalLines:0,goalPure:0,hard:0,bias:0};
+  if(opts&&opts.seed)seedBase=opts.seed;
   N=cfg.size||8;CELL=640/N;
   G={mode,cfg,board:newBoard(),score:0,shown:0,best:+store(mode==="dash"?"hz_dbest_"+d:"hz_best_"+mode)||0,combo:0,bestCombo:0,pure:0,lines:0,placed:0,turn:0,pieces:[],drag:null,
      undo:null,undoUsed:false,date:d,over:false,won:false,overT:0,seedBase,lastScoreAnim:0};
+  G.chal=(opts&&opts.chal)||null;
   if(cfg.stones)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
   if(cfg.design){applyDesign(G.board,cfg.design);G.pre=copyBoard(G.board)}
   G.startFill=G.board.flat().filter(v=>v!==null).length;G.mstyle=pickStyle();
   if(mode==="stage"&&cfg.level===1&&cfg.tier===0&&!store("hz_tut_done"))G.tut={step:0,hk:-1,hint:null,t:0};
   nextSet();state="play";hide("menu");hide("over");sfx.start();showIntro()}
-function seedFn(){return a=>G.mode!=="classic"?mulberry(hash(G.seedBase+"|"+G.turn+"|"+a)):Math.random}
+function seedFn(){return a=>mulberry(hash(G.seedBase+"|"+G.turn+"|"+a))}
 function nextSet(){const set=genSet(G.board,seedFn(),G.cfg.colors,G.cfg.hard,G.cfg.bias||0);G.turn++;
   G.pieces=set.map((p,i)=>({s:p.s,color:p.color,used:false,x:LW/2,y:LH+200,sc:.2,slot:i,t:-i*.09,id:Math.random()}))}
 function slotCenter(i){return[120+i*240,TRAY_Y]}
@@ -822,7 +825,8 @@ function endGame(){
   state="over";const m=G.mode,c=G.cfg;const bkey=m==="dash"?"hz_dbest_"+G.date:"hz_best_"+m;let best=+store(bkey)||0;const isBest=G.score>best;if(isBest){best=G.score;store(bkey,String(best))}
   G.best=best;let streakTxt="",info="",stars="",title="";let got=[];
   $("bNext").style.display="none";$("bAgain").textContent="PLAY AGAIN";
-  if(m==="classic"){title=isBest?"New best!":"Game over";sfx.over()}
+  if(m==="classic"){title=isBest?"New best!":"Game over";sfx.over();
+    if(G.chal){const w=G.score>G.chal.score;title=w?"You beat "+G.chal.name+"!":"Not this time!";info=G.chal.name+" scored "+G.chal.score.toLocaleString()+(w?"":" · you got "+G.score.toLocaleString());if(w)sfx.pure()}}
   else if(m==="dash"){const r=dashFinish();got=r.got;mTick("dash",1);ST.dash=(ST.dash||0)+1;ST.bs=Math.max(ST.bs||0,r.sk);sfx.pure();title=isBest?"New best today!":"Dash complete!";
     info=(G.done?"All "+c.pieces+" pieces placed":"No room left after "+G.placed+" pieces")+(r.first?"":"  ·  streak already counted today");
     streakTxt="🔥 "+r.sk+"-day streak"+(r.badge?"  ·  "+r.badge+"!":"");$("bAgain").textContent="TRY FOR A BETTER SCORE"}
@@ -840,7 +844,7 @@ function endGame(){
       {const need=Math.max(0,c.goalLines-G.lines),needP=Math.max(0,c.goalPure-G.pure);if(need+needP>0&&need<=2&&needP<=1){title="SO CLOSE!";info="Only "+(need?need+" more line"+(need>1?"s":""):"")+(need&&needP?" and ":"")+(needP?"1 more Pure clear":"")+" to win!";$("bAgain").textContent="TRY AGAIN NOW"}}
       if(m==="stage"){const key=c.level+"-"+c.tier;startGame.retry={key,r:((startGame.retry&&startGame.retry.key===key)?startGame.retry.r:0)+1}}
       if(m==="daily"){const d=G.date;store("hz_att_"+d,String((+store("hz_att_"+d)||0)+1))}}}
-  $("bMap").style.display=m==="stage"?"inline-block":"none";
+  $("bMap").style.display=m==="stage"?"inline-block":"none";$("bChal").style.display=m==="classic"?"block":"none";
   got.forEach(k=>addBoost(k));$("ovReward").textContent=got.length?"Reward: "+got.map(boostIcon).join(" "):"";
   if(G.won&&!G.boostUsed&&m!=="classic"&&m!=="dash")info+="  ·  no boosters used";
   $("ovTitle").textContent=title;$("ovStars").textContent=stars;$("ovInfo").textContent=info;
@@ -874,8 +878,11 @@ function tipFor(c){
   if(ix<=4)return"Look for glowing lines on the board. They're all one color so far. Add matching pieces to finish a PURE line!";
   if(c.stones&&ix<=9)return"New: gray STONES! A line with a stone can't be Pure, but it still clears. Plan your Pure lines in stone-free rows and columns.";
   return"Keep each line ONE color. Glowing lines and the star on a piece show where a Pure clear is close.";}
+const SHARE_URL="https://dherrington63026-jpg.github.io/"; // change to huezel.com if we buy it
 let skipIntro=false;
-function showIntro(){if(skipIntro){skipIntro=false;return}if(G.cfg.kind==="classic")return;const c=G.cfg;
+function showIntro(){if(skipIntro){skipIntro=false;return}
+  if(G.chal){$("inKind").textContent="Friend challenge";$("inGoal").textContent=G.chal.name+" scored "+G.chal.score.toLocaleString();$("inChips").innerHTML='<span class="chip" style="cursor:default">same pieces for both of you</span>';
+    $("inTip").textContent="Play the exact same game "+G.chal.name+" played. Beat their score to win!";$("inStars").textContent="";$("inExtra").textContent="";show("intro");return}if(G.cfg.kind==="classic")return;const c=G.cfg;
   if(c.kind==="dash"){$("inKind").textContent="Daily Dash · "+G.date;$("inGoal").textContent=c.pieces+" pieces. Score big!";
     $("inChips").innerHTML='<span class="chip" style="cursor:default">same pieces for everyone</span> <span class="chip" style="cursor:default">no boosters</span>';
     $("inTip").textContent="Place all "+c.pieces+" shapes and score as many points as you can. Pure clears (one-color lines) and combos score the most. Plan ahead: the run ends early if nothing fits!";
@@ -989,6 +996,11 @@ function syncOpts(){$("tMStyle").textContent="Music style: "+(opt.mstyle==="auto
   $("tMusic").textContent="Music: "+(opt.music?"on":"off");$("tMusic").classList.toggle("off",!opt.music);
   $("tSound").textContent="Sound: "+(opt.sound?"on":"off");$("tSound").classList.toggle("off",!opt.sound);
   $("tCB").textContent="Color-blind symbols: "+(opt.cb?"on":"off");$("tCB").classList.toggle("off",!opt.cb)}
+$("bChal").onclick=async()=>{const name=($("nameIn").value||"").replace(/[^\w \-']/g,"").trim().slice(0,14)||"A friend";
+  const url=SHARE_URL+"?c="+G.seedBase+"."+G.score+"."+encodeURIComponent(name);
+  const t=name+" scored "+G.score.toLocaleString()+" on Huezel. Same pieces, can you beat it? "+url;
+  try{if(navigator.share){await navigator.share({text:t});return}}catch(e){}
+  try{await navigator.clipboard.writeText(t);toast("Challenge link copied! Send it to a friend.")}catch(e){prompt("Copy and send:",t)}};
 $("bShare").onclick=async()=>{const t=shareText();
   try{if(navigator.share){await navigator.share({text:t});return}}catch(e){}
   try{await navigator.clipboard.writeText(t);toast("Result copied! Paste it anywhere.")}catch(e){prompt("Copy your result:",t)}};
@@ -1183,7 +1195,7 @@ function hud(){
   const sc=Math.round(G.shown).toLocaleString();const pulse=1+Math.min(.12,Math.abs(G.score-G.shown)/4000);
   ctx.save();ctx.translate(LW/2,142);ctx.scale(pulse,pulse);ctx.strokeText(sc,0,0);
   const tg=ctx.createLinearGradient(0,-50,0,50);tg.addColorStop(0,"#fff");tg.addColorStop(1,"#ffd96a");ctx.shadowColor="rgba(255,200,80,.55)";ctx.shadowBlur=26;ctx.fillStyle=tg;ctx.fillText(sc,0,0);ctx.restore();
-  if(G.cfg.kind==="classic"){ctx.font="700 22px 'Segoe UI',system-ui,sans-serif";ctx.fillStyle="rgba(255,255,255,.65)";ctx.fillText("BEST "+Math.max(G.best,G.score).toLocaleString()+"   ·   LINES "+G.lines+"   ·   PURE "+G.pure,LW/2,214)}
+  if(G.cfg.kind==="classic"){ctx.font="700 22px 'Segoe UI',system-ui,sans-serif";ctx.fillStyle="rgba(255,255,255,.65)";ctx.fillText((G.chal?"TO BEAT "+G.chal.score.toLocaleString():"BEST "+Math.max(G.best,G.score).toLocaleString())+"   ·   LINES "+G.lines+"   ·   PURE "+G.pure,LW/2,214)}
   else{const items=G.cfg.kind==="dash"?[["PIECES",G.placed,G.cfg.pieces]]:[["LINES",Math.min(G.lines,G.cfg.goalLines),G.cfg.goalLines]];if(G.cfg.goalPure)items.push(["PURE",Math.min(G.pure,G.cfg.goalPure),G.cfg.goalPure]);
     const pw=230,gap=20,tot=items.length*pw+(items.length-1)*gap;items.forEach((it,i)=>{const x=LW/2-tot/2+i*(pw+gap),y=196,done=it[1]>=it[2];
       ctx.save();ctx.fillStyle="rgba(10,6,40,.6)";rr(x,y,pw,40,20);ctx.fill();ctx.save();rr(x,y,pw,40,20);ctx.clip();
@@ -1204,6 +1216,9 @@ function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearG
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
 requestAnimationFrame(frame);
 if("serviceWorker" in navigator&&location.protocol.startsWith("http")){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+(function(){const q=new URLSearchParams(location.search).get("c");if(!q)return;const a=q.split(".");if(!/^[a-z0-9]{3,12}$/.test(a[0]||"")||!(+a[1]>=0))return;
+  let nm="A friend";try{nm=decodeURIComponent(a[2]||"A friend")}catch(e){}nm=nm.replace(/[^\w \-']/g,"").slice(0,14)||"A friend";
+  startGame("classic",0,0,{seed:a[0],chal:{name:nm,score:+a[1]}})})();
 /* screenshot scenes for store listing (only used with ?shot=name) */
 (function(){const q=new URLSearchParams(location.search).get("shot");if(!q)return;opt.sound=false;opt.music=false;
   const fill=(r,c0,c1,col)=>{for(let c=c0;c<=c1;c++)G.board[r][c]=col};

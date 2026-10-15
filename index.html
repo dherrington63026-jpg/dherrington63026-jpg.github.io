@@ -116,6 +116,7 @@
   <div class="panel" style="text-align:left">
     <div class="lbl">Save your progress</div>
     <p style="font-weight:700;line-height:1.45;font-size:14px;margin:8px 0">Your levels and boosters are stored on this phone. If they ever reset, or you get a new phone or install the app, paste your code here to get them back.</p>
+    <div id="devIdLine" style="font-size:11px;opacity:.6;word-break:break-all;margin:4px 0 8px"></div>
     <div class="lbl">1 · Your code (copy it somewhere safe)</div>
     <textarea id="saveOut" readonly rows="3" style="width:100%;margin:6px 0;padding:10px;border-radius:12px;border:1px solid var(--edge);background:rgba(0,0,0,.3);color:#fff;font:600 12px monospace;user-select:text;-webkit-user-select:text"></textarea>
     <button class="btn gold" id="bCopy" style="width:100%;margin-bottom:12px">COPY MY CODE</button>
@@ -1227,7 +1228,7 @@ function restoreCode(txt){try{txt=(txt||"").trim();if(txt.indexOf("HUEZEL1:")!==
   Object.keys(o).forEach(k=>{if(k.indexOf("hz_")===0&&typeof o[k]==="string"){localStorage.setItem(k,o[k]);n++}});if(!n)throw 0;return true}catch(e){return false}}
 function standalone(){return(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true}
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{})}
-$("bSave").onclick=()=>{$("saveOut").value=makeCode();$("saveIn").value="";renderCloud();hide("menu");show("saveScr")};
+$("bSave").onclick=()=>{$("devIdLine").textContent="Your game ID: "+devId()+" (needed only if you ask us to delete your leaderboard data)";$("saveOut").value=makeCode();$("saveIn").value="";renderCloud();hide("menu");show("saveScr")};
 $("bSaveBack").onclick=()=>{hide("saveScr");show("menu")};
 $("bCopy").onclick=async()=>{const t=$("saveOut").value;try{await navigator.clipboard.writeText(t);toast("Code copied! Paste it into a note or message to yourself.")}catch(e){$("saveOut").select();toast("Press and hold the code, then tap Copy")}};
 $("bRestore").onclick=()=>{const t=$("saveIn").value;if(!t.trim()){toast("Paste your code first");return}
@@ -1574,7 +1575,7 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-applyQ();const BUILD="2026-10-15 b14";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
+applyQ();const BUILD="2026-10-15 b15";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
 {let taps=0,tt=0;$("verTag").style.cssText+=";padding:8px 14px;cursor:pointer";$("verTag").onclick=()=>{const n=Date.now();if(n-tt>4000)taps=0;tt=n;taps++;if(taps>=7){taps=0;TESTER=!TESTER;store("hz_tester",TESTER?"1":"0");verTxt();refreshMenu();toast(TESTER?"Tester mode ON: unlimited boosters (scores won't count for leaderboards)":"Tester mode OFF")}}}
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});

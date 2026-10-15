@@ -52,6 +52,7 @@
     width:min(78vw,320px);padding:14px 20px;border-radius:20px;cursor:pointer;
     background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.06));
     box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.5);backdrop-filter:blur(10px);transition:transform .12s,filter .12s}
+  .btn.pulse{animation:npulse 1.4s infinite}
   .btn:hover{filter:brightness(1.15)}.btn:active{transform:scale(.96)}
   .btn.hot{background:linear-gradient(180deg,#ff6a88,#ff3d5a 55%,#c4194a);border-color:#ffb3c2}
   .btn.gold{background:linear-gradient(180deg,#ffe27a,#ffc21a 55%,#d17a00);border-color:#fff1b0;color:#3a2200}
@@ -67,7 +68,7 @@
   .lbl{font-size:12px;letter-spacing:.24em;text-transform:uppercase;opacity:.7}
   .stats{display:flex;justify-content:space-around;margin:14px 0 18px;font-weight:800;font-size:22px}
   .stats span{display:block;font-size:11px;font-weight:600;letter-spacing:.16em;opacity:.65;margin-top:2px}
-  #toast{position:fixed;left:50%;bottom:17%;width:max-content;max-width:86vw;text-align:center;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:12px 20px;border-radius:14px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9}
+  #toast{position:fixed;left:50%;top:27%;width:max-content;max-width:86vw;text-align:center;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:12px 20px;border-radius:14px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9}
   #toast.show{opacity:1}
 </style>
 </head>
@@ -105,6 +106,16 @@
     <div class="lbl">2 · Restore from a code</div>
     <textarea id="saveIn" rows="3" placeholder="Paste a code that starts with HUEZEL1:" style="width:100%;margin:6px 0;padding:10px;border-radius:12px;border:1px solid var(--edge);background:rgba(0,0,0,.3);color:#fff;font:600 12px monospace;user-select:text;-webkit-user-select:text"></textarea>
     <button class="btn hot" id="bRestore" style="width:100%;margin-bottom:10px">RESTORE</button>
+    <div id="cloudBox" style="display:none;border-top:1px solid var(--edge);margin-top:12px;padding-top:10px">
+      <div class="lbl">3 · Online backup (best: follows you to any phone)</div>
+      <div id="cloudInfo" style="font-weight:700;font-size:13px;line-height:1.4;margin:6px 0">Turn it on and your progress is saved online automatically. You get a short code to use on another phone.</div>
+      <div id="cloudCodeBox" style="display:none"><div id="cloudCode" style="font:900 22px monospace;letter-spacing:2px;text-align:center;background:rgba(0,0,0,.3);border:1px solid var(--edge);border-radius:12px;padding:10px;margin:6px 0;user-select:text;-webkit-user-select:text"></div>
+        <button class="btn gold" id="bCloudCopy" style="width:100%;margin-bottom:8px">COPY MY ONLINE CODE</button>
+        <button class="chip" id="bCloudNow" style="margin-bottom:8px">Back up now</button></div>
+      <button class="btn hot" id="bCloudOn" style="width:100%;margin-bottom:8px">TURN ON ONLINE BACKUP</button>
+      <input id="cloudIn" placeholder="Have a code? Type it here (HZ-XXXX-XXXX-XX)" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--edge);background:rgba(0,0,0,.3);color:#fff;font:700 14px monospace;text-transform:uppercase;user-select:text;-webkit-user-select:text;margin-bottom:8px">
+      <button class="btn" id="bCloudRestore" style="width:100%;margin-bottom:6px">RESTORE FROM ONLINE CODE</button>
+    </div>
     <button class="chip" id="bSaveBack">Back</button>
   </div>
 </div>
@@ -189,7 +200,8 @@ function mulberry(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=M
 function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
 const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 function nativeSet(k,v){try{Capacitor.Plugins.Preferences.set({key:k,value:v})}catch(e){}}
-function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);if(NATIVE&&k.indexOf("hz_")===0)nativeSet(k,v)}catch(e){return null}}
+var cloudTimer=null;
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);if(NATIVE&&k.indexOf("hz_")===0)nativeSet(k,v);if(k.indexOf("hz_")===0&&k!=="hz_upd"&&k!=="hz_synccode"&&k!=="hz_cloud_override"){localStorage.setItem("hz_upd",String(Date.now()));if(typeof cloudSchedule==="function")cloudSchedule()}}catch(e){return null}}
 function ymd(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function weekStr(off=0){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)+off*7);return ymd(d)}
 function weekLabel(w){const d=new Date(w+"T12:00:00");return d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}
@@ -465,6 +477,7 @@ function startGame(mode,stage,tier){
   if(cfg.stones)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
   if(cfg.design){applyDesign(G.board,cfg.design);G.pre=copyBoard(G.board)}
   G.startFill=G.board.flat().filter(v=>v!==null).length;G.mstyle=pickStyle();
+  if(mode==="stage"&&cfg.level===1&&cfg.tier===0&&!store("hz_tut_done"))G.tut={step:0,hk:-1,hint:null,t:0};
   nextSet();state="play";hide("menu");hide("over");sfx.start();showIntro()}
 function seedFn(){return a=>G.mode!=="classic"?mulberry(hash(G.seedBase+"|"+G.turn+"|"+a)):Math.random}
 function nextSet(){const set=genSet(G.board,seedFn(),G.cfg.colors,G.cfg.hard,G.cfg.bias||0);G.turn++;
@@ -609,7 +622,8 @@ function shareText(){
 function refreshMenu(){const st=+store("hz_streak")||0,last=store("hz_last_daily"),t=weekStr(),att=+store("hz_att_"+t)||0;
   const dk=designKeyFor(weekStr());$("bDaily").firstChild.textContent="WEEKLY: "+DESIGNS[dk].emoji+" "+DESIGNS[dk].name.toUpperCase();
   $("dailySub").textContent=(last===t?"solved this week ✓":(att?att+" attempt"+(att>1?"s":"")+" this week":"very hard · new every Monday"))+(st?" · "+st+" wk streak":"");
-  $("stageSub").textContent="level "+maxLevel()+" · "+totalStars()+" stars";
+  const firstTime=!store("hz_tut_done")&&totalStars()===0;$("bStage").classList.toggle("pulse",firstTime);
+  $("stageSub").textContent=firstTime?"tap here to start!":"level "+maxLevel()+" · "+totalStars()+" stars";
   $("menuStars").textContent="★ "+totalStars();$("mapStars").textContent="★ "+totalStars();
   $("menuBoost").innerHTML=BOOSTS.map(b=>b.icon+" "+BO[b.k]).join('<span style="opacity:.4">·</span>')}
 function goalText(c){return c.kind==="classic"?"":("Clear "+c.goalLines+" lines")}
@@ -655,6 +669,41 @@ function openLvl(L){let h='<div class="lbl">Level '+L+'</div><div style="font-si
 $("lvlBody").addEventListener("click",e=>{if(e.target.closest("#lvlClose")){hide("lvl");return}const b=e.target.closest(".tierbtn");if(!b||b.classList.contains("lock"))return;
   const L=+$("lvlBody").dataset.l,t=+b.dataset.t;hide("lvl");hide("map");startGame("stage",L,t)});
 
+/* ============ online backup (Firebase Realtime Database REST) ============ */
+// David: paste your Firebase Realtime Database URL between the quotes to switch online backup on, e.g. "https://huezel-1234-default-rtdb.firebaseio.com"
+var CLOUD_DB="";
+try{const o=localStorage.getItem("hz_cloud_override");if(o)CLOUD_DB=o}catch(e){}
+const CLOUD_CHARS="ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+function genCode(){let c="HZ";const a=new Uint8Array(10);(window.crypto||{getRandomValues:x=>x.forEach((_,i)=>x[i]=Math.random()*256)}).getRandomValues(a);a.forEach(v=>c+=CLOUD_CHARS[v%CLOUD_CHARS.length]);return c}
+function fmtCode(c){return c.slice(0,2)+"-"+c.slice(2,6)+"-"+c.slice(6,10)+"-"+c.slice(10)}
+function normCode(t){return(t||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
+function cloudKeys(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf("hz_")===0&&k!=="hz_synccode"&&k!=="hz_upd"&&k!=="hz_cloud_override")o[k]=localStorage.getItem(k)}return o}
+async function cloudPush(){const code=localStorage.getItem("hz_synccode");if(!CLOUD_DB||!code)return false;
+  try{const body=JSON.stringify({u:+localStorage.getItem("hz_upd")||Date.now(),d:JSON.stringify(cloudKeys())});const r=await fetch(CLOUD_DB+"/saves/"+code+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body});return r.ok}catch(e){return false}}
+function cloudSchedule(){if(!CLOUD_DB||!localStorage.getItem("hz_synccode"))return;clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,2500)}
+async function cloudGet(code){const r=await fetch(CLOUD_DB+"/saves/"+code+".json");if(!r.ok)throw new Error("net");return await r.json()}
+function mergeCloud(j){const d=JSON.parse(j.d),lu=+localStorage.getItem("hz_upd")||0;
+  Object.keys(d).forEach(k=>{if(k==="hz_prog"){let a={},b={};try{a=JSON.parse(localStorage.getItem("hz_prog")||"{}")}catch(e){}try{b=JSON.parse(d[k])}catch(e){}
+      const m={};new Set(Object.keys(a).concat(Object.keys(b))).forEach(L=>{m[L]=[0,1,2].map(t=>Math.max((a[L]||[])[t]||0,(b[L]||[])[t]||0))});localStorage.setItem(k,JSON.stringify(m))}
+    else if((j.u||0)>lu||localStorage.getItem(k)===null)localStorage.setItem(k,d[k]);
+    if(NATIVE)nativeSet(k,localStorage.getItem(k))});
+  localStorage.setItem("hz_upd",String(Math.max(j.u||0,lu)))}
+async function cloudStartup(){const code=localStorage.getItem("hz_synccode");if(!CLOUD_DB||!code)return;
+  try{const j=await cloudGet(code);const lu=+localStorage.getItem("hz_upd")||0;
+    if(j&&j.d&&j.u>lu){mergeCloud(j);location.reload()}else if(!j||(j&&lu>(j.u||0)))cloudPush()}catch(e){}}
+function renderCloud(){if(!CLOUD_DB){$("cloudBox").style.display="none";return}$("cloudBox").style.display="block";const code=localStorage.getItem("hz_synccode");
+  $("cloudCodeBox").style.display=code?"block":"none";$("bCloudOn").style.display=code?"none":"block";
+  if(code){$("cloudCode").textContent=fmtCode(code);$("cloudInfo").textContent="Online backup is ON. Your progress saves automatically. On another phone, type this code below."}}
+$("bCloudOn").onclick=async()=>{const c=genCode();localStorage.setItem("hz_synccode",c);localStorage.setItem("hz_upd",String(Date.now()));const ok=await cloudPush();
+  if(ok){toast("Online backup is on!");renderCloud()}else{localStorage.removeItem("hz_synccode");toast("Couldn't reach the online backup. Check your internet and try again.")}};
+$("bCloudNow").onclick=async()=>{toast(await cloudPush()?"Backed up!":"Couldn't reach the online backup.")};
+$("bCloudCopy").onclick=async()=>{const t=fmtCode(localStorage.getItem("hz_synccode")||"");try{await navigator.clipboard.writeText(t);toast("Online code copied!")}catch(e){toast("Write it down: "+t)}};
+$("bCloudRestore").onclick=async()=>{const code=normCode($("cloudIn").value);if(code.length!==12||code.indexOf("HZ")!==0){toast("That doesn't look like a code (HZ-XXXX-XXXX-XX)");return}
+  try{const j=await cloudGet(code);if(!j||!j.d){toast("No saved progress found for that code");return}
+    if(!confirm("Restore progress from this online code? Your best progress from both is kept."))return;
+    mergeCloud(j);localStorage.setItem("hz_synccode",code);toast("Progress restored!");setTimeout(()=>location.reload(),700)}catch(e){toast("Couldn't reach the online backup. Check your internet.")}};
+cloudStartup();
+
 /* ============ keep progress safe ============ */
 function makeCode(){try{const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf("hz_")===0)o[k]=localStorage.getItem(k)}
   return"HUEZEL1:"+btoa(unescape(encodeURIComponent(JSON.stringify(o))))}catch(e){return"Could not read saved progress on this browser."}}
@@ -662,7 +711,7 @@ function restoreCode(txt){try{txt=(txt||"").trim();if(txt.indexOf("HUEZEL1:")!==
   Object.keys(o).forEach(k=>{if(k.indexOf("hz_")===0&&typeof o[k]==="string"){localStorage.setItem(k,o[k]);n++}});if(!n)throw 0;return true}catch(e){return false}}
 function standalone(){return(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true}
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{})}
-$("bSave").onclick=()=>{$("saveOut").value=makeCode();$("saveIn").value="";hide("menu");show("saveScr")};
+$("bSave").onclick=()=>{$("saveOut").value=makeCode();$("saveIn").value="";renderCloud();hide("menu");show("saveScr")};
 $("bSaveBack").onclick=()=>{hide("saveScr");show("menu")};
 $("bCopy").onclick=async()=>{const t=$("saveOut").value;try{await navigator.clipboard.writeText(t);toast("Code copied! Paste it into a note or message to yourself.")}catch(e){$("saveOut").select();toast("Press and hold the code, then tap Copy")}};
 $("bRestore").onclick=()=>{const t=$("saveIn").value;if(!t.trim()){toast("Paste your code first");return}
@@ -703,6 +752,7 @@ $("nameIn").value=store("hz_name")||"";syncOpts();refreshMenu();
 function toL(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left-OX)/VS,(e.clientY-r.top-OY)/VS]}
 function pieceRect(p){const[sx,sy]=slotCenter(p.slot);return{x:sx-120,y:sy-118,w:240,h:236}}
 cv.addEventListener("pointerdown",e=>{audio();if(state!=="play"||G.over||G.drag)return;const[x,y]=toL(e);
+  if(G.tut&&x>=18&&x<=128&&y>=118&&y<=154){store("hz_tut_done","1");G.tut=null;toast("Tutorial skipped");return}
   if(Math.hypot(x-60,y-70)<44){if(G.mode==="stage"){openMap()}else{state="menu";show("menu");refreshMenu()}return}
   if(G.cfg.kind!=="classic"&&x>=590&&x<=700&&y>=30&&y<=112){const pr=parFor(G.cfg);toast("★★★ = "+pr+" pieces or fewer · ★★ = "+Math.floor(pr*1.5)+" or fewer");return}
   for(let i=0;i<BOOSTS.length;i++){const[bx,by]=boostPos(i);if(Math.hypot(x-bx,y-by)<44){boostTap(BOOSTS[i].k);return}}
@@ -733,6 +783,7 @@ function update(dt){bgT+=dt;
   fx.cells=fx.cells.filter(c=>c.kind==="land"?c.t<c.delay+.5:c.t<c.delay+.4);
   fx.sweeps.forEach(w=>w.t+=dt);fx.sweeps=fx.sweeps.filter(w=>w.t<w.dur);fx.punch=Math.max(0,fx.punch-dt*.5);
   menuBlocks.forEach(b=>{b.y+=b.v*dt;b.rot+=b.vr*dt;if(b.y>LH+120){b.y=-120;b.x=rnd(0,LW)}});
+  if(G&&G.tut){const T=G.tut;T.t+=dt;if(T.step===0&&G.placed>=1)T.step=1;if(T.step===1&&G.lines>=1){T.step=2;T.t=0;store("hz_tut_done","1")}if(T.step===2&&T.t>3)G.tut=null}
   if(G&&state==="play"&&!G.over){if(G.drag){G.idle=0;G.hint=null}else{G.idle=(G.idle||0)+dt;if(G.idle>8&&!G.hint)G.hint=findHint()}}
   if(G){G.shown=lerp(G.shown,G.score,1-Math.pow(.0005,dt));if(Math.abs(G.shown-G.score)<1)G.shown=G.score;
     G.pieces.forEach(p=>{p.t+=dt;if(p.shake>0)p.shake-=dt;if(p.t<0)return;if(G.drag&&G.drag.p===p){const d=G.drag,[cx,cy]=dragCenter(d);d.t+=dt;const tg=dropTarget(d);d.mag=lerp(d.mag,tg?1:0,1-Math.pow(.0001,dt));
@@ -803,6 +854,20 @@ function targetOverlay(){const t=G.tgt;if(!t)return;const pu=.5+.5*Math.sin(bgT*
     ctx.fillStyle="rgba(10,6,40,.92)";rr(30,TRAY_Y-120,660,240,34);ctx.fill();ctx.strokeStyle="rgba(255,255,255,.3)";ctx.lineWidth=2;rr(30,TRAY_Y-120,660,240,34);ctx.stroke();
     const nc=G.cfg.colors;for(let i=0;i<nc;i++){const[px,py]=palettePos(i,nc);block(px-36,py-36,72,i,1)}
     ctx.fillStyle="#fff";ctx.font="800 24px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("Pick the new color for "+t.sel.length+" block"+(t.sel.length>1?"s":""),LW/2,TRAY_Y-90)}}
+function tutorialDraw(){const T=G.tut;if(!T||state!=="play"||G.over)return;
+  const cap=(msg,col)=>{ctx.save();ctx.font="900 30px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.lineWidth=7;ctx.strokeStyle="rgba(20,8,60,.9)";ctx.lineJoin="round";ctx.strokeText(msg,LW/2,BY+N*CELL+44);ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=14;ctx.fillText(msg,LW/2,BY+N*CELL+44);ctx.restore()};
+  // skip pill
+  ctx.save();ctx.fillStyle="rgba(10,6,40,.6)";rr(18,118,110,36,18);ctx.fill();ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;rr(18,118,110,36,18);ctx.stroke();ctx.fillStyle="rgba(255,255,255,.85)";ctx.font="800 18px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("Skip tutorial",73,137);ctx.restore();
+  if(T.step===0){if(T.hk!==G.placed){T.hk=G.placed;T.hint=findHint()}const h=T.hint;if(!h||G.drag){cap("Drag the shape onto the grid","#ffffff");return}
+    const pu=.5+.5*Math.sin(bgT*8);h.p.s.cells.forEach(([i,j])=>{const[x,y]=cellXY(h.r+i,h.c+j);ctx.save();ctx.strokeStyle="rgba(255,226,122,"+(.5+.4*pu)+")";ctx.lineWidth=5;ctx.shadowColor="#ffd96a";ctx.shadowBlur=18;rr(x+4,y+4,CELL-8,CELL-8,16);ctx.stroke();ctx.restore()});
+    const[sx,sy]=slotCenter(h.p.slot),ex=BX+(h.c+h.p.s.w/2)*CELL,ey=BY+(h.r+h.p.s.h/2)*CELL,ph=(T.t%2.2)/1.6,u=Math.min(1,ph),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,hx=sx+(ex-sx)*e,hy=sy+(ey-sy)*e;
+    ctx.save();ctx.globalAlpha=ph>1?Math.max(0,1-(ph-1)*4):1;ctx.font="64px 'Segoe UI Emoji','Apple Color Emoji',sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.shadowColor="rgba(0,0,0,.6)";ctx.shadowBlur=10;ctx.fillText("👆",hx+6,hy+46);ctx.restore();
+    cap("Drag the shape onto the grid","#ffffff")}
+  else if(T.step===1){let best=null,bk=-1;for(let r=0;r<N;r++){const k=G.board[r].filter(v=>v!==null).length;if(k<N&&k>bk){bk=k;best={row:true,i:r}}}
+    for(let c=0;c<N;c++){let k=0;for(let r=0;r<N;r++)if(G.board[r][c]!==null)k++;if(k<N&&k>bk){bk=k;best={row:false,i:c}}}
+    if(best&&bk>0){const pu=.5+.5*Math.sin(bgT*7);ctx.save();ctx.strokeStyle="rgba(255,226,122,"+(.45+.45*pu)+")";ctx.lineWidth=5;ctx.shadowColor="#ffd96a";ctx.shadowBlur=22;if(best.row)rr(BX-3,BY+best.i*CELL+2,N*CELL+6,CELL-4,20);else rr(BX+best.i*CELL+2,BY-3,CELL-4,N*CELL+6,20);ctx.stroke();ctx.restore()}
+    cap("Fill a whole row or column to clear it!","#ffe27a")}
+  else{cap("Great job! Clear "+G.cfg.goalLines+" lines to win.","#9ee8ff")}}
 function render(){
   ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(DPR,0,0,DPR,0,0);
   background();
@@ -836,14 +901,14 @@ function render(){
   // rings
   fx.rings.forEach(r=>{const u=r.life/r.dur,e=1-Math.pow(1-u,3);ctx.save();ctx.globalAlpha=1-u;ctx.strokeStyle=r.col;ctx.lineWidth=r.w*(1-u)+1;ctx.shadowColor=r.col;ctx.shadowBlur=30;
     ctx.beginPath();ctx.arc(r.x,r.y,10+(r.max-10)*e,0,6.3);ctx.stroke();ctx.restore()});
-  tipBar(pv);boosterBar();
+  if(!G.tut)tipBar(pv);boosterBar();
   // tray
   ctx.fillStyle="rgba(255,255,255,.05)";rr(30,TRAY_Y-120,660,240,34);ctx.fill();
   ctx.strokeStyle="rgba(255,255,255,.12)";ctx.lineWidth=2;rr(30,TRAY_Y-120,660,240,34);ctx.stroke();
   G.pieces.forEach(p=>{if(p.used||p.t<0)return;if(G.drag&&G.drag.p===p)return;drawPiece(p);
     if(G.cues&&G.cues.some(q=>q.col===p.color&&q.k>=3)){const pu=.6+.4*Math.sin(bgT*6),[sx,sy]=slotCenter(p.slot);ctx.save();ctx.fillStyle="#ffe27a";ctx.shadowColor="#ffd96a";ctx.shadowBlur=18*pu;ctx.font="900 40px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.globalAlpha=.6+.4*pu;ctx.fillText("★",sx,sy-100);ctx.restore()}});
   if(G.drag)drawPiece(G.drag.p,true);
-  targetOverlay();
+  targetOverlay();tutorialDraw();
   // particles
   fx.parts.forEach(p=>{const a=1-p.life/p.max;ctx.save();ctx.globalAlpha=a;ctx.translate(p.x,p.y);ctx.rotate(p.rot);
     ctx.shadowColor=p.col;ctx.shadowBlur=14;ctx.fillStyle=p.col;if(p.star){ctx.beginPath();for(let k=0;k<8;k++){const a=k*.7854,q=(k%2?.25:1)*p.size;ctx.lineTo(Math.cos(a)*q,Math.sin(a)*q)}ctx.closePath();ctx.fill()}else{rr(-p.size/2,-p.size/2,p.size,p.size,p.size*.25);ctx.fill()}ctx.restore()});

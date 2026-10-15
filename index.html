@@ -1022,6 +1022,7 @@ const PRODUCTS={
  premium_all:{n:"Premium Collection",e:"👑",usd:9.99,once:1,sub:"ALL 9 premium skins at once (save $7)",give:{own:["crystal","chrome","gold","aurora","neoncity","candy","cs_jewel","cs_retropop","synthwave"]}},
  dash_catchup:{n:"Dash streak catch-up",e:"🔥",usd:.99,sub:"Keep a missed day in your streak",give:{}}};
 const STORE_LIST=["starter","premium_all","sparks_s","sparks_m","sparks_l","sparks_xl","boost_s","boost_m","boost_l"];
+function storeName(){try{if(window.Capacitor&&Capacitor.getPlatform){const q=Capacitor.getPlatform();if(q==="ios")return"App Store";if(q==="android")return"Google Play"}}catch(e){}return typeof window.getDigitalGoodsService==="function"?"Google Play":"app store"}
 const Store={mode(){if(TESTER)return"test";if(Store.native&&Store.native.ready)return"native";return null},
   available(){return !!Store.mode()},native:null,
   // returns false (cancelled), true (ok, caller delivers) or "delivered" (already delivered by the native layer)
@@ -1073,7 +1074,7 @@ function deliverTx(t){if(!t||!t.transactionId||!t.productIdentifier)return false
 let buyPid=null;
 function openBuy(pid){const P=PRODUCTS[pid];if(!P)return;if(P.once&&purchased().includes(pid)){toast("You already own this");return}
   buyPid=pid;$("buyIcon").textContent=P.e;$("buyName").textContent=P.n;$("buySub").textContent=P.sub||"";
-  $("bBuyYes").textContent=(Store.mode()==="test"?"TEST PURCHASE (no money) · ":"BUY · ")+Store.price(pid);$("buyNote").textContent=Store.mode()==="test"?"Tester mode: nothing is charged.":"Your App Store or Google Play account is charged. Purchases are final once delivered.";show("buyScr")}
+  $("bBuyYes").textContent=(Store.mode()==="test"?"TEST PURCHASE (no money) · ":"BUY · ")+Store.price(pid);$("buyNote").textContent=Store.mode()==="test"?"Tester mode: nothing is charged.":"Your "+storeName()+" account is charged. Purchases are final once delivered.";show("buyScr")}
 async function doBuy(){const pid=buyPid;if(!pid)return;hide("buyScr");let ok=false;try{ok=await Store.buy(pid)}catch(e){}
   if(!ok){toast("Purchase cancelled");backToRescue();return}if(ok!=="delivered")grantProduct(pid);try{sfx.pure()}catch(e){}toast("Thank you! "+PRODUCTS[pid].n+" delivered.");backToRescue();if(!$("shopScr").classList.contains("show")===false)renderShop();refreshMenu()}
 async function buyCatchUp(n){for(let i=0;i<n;i++){const ok=await Store.buy("dash_catchup");if(!ok)return false;if(Store.mode()!=="test")recordSpend(PRODUCTS.dash_catchup.usd)}return true}
@@ -1082,7 +1083,7 @@ function renderStoreTab(el){
     const ic=document.createElement("div");ic.textContent=P.e;ic.style.cssText="font-size:28px;flex:none;width:40px;text-align:center";const nm=document.createElement("div");nm.style.cssText="flex:1;text-align:left;font-weight:800;font-size:14px;line-height:1.25";nm.innerHTML=P.n+'<div style="font-weight:600;font-size:12px;opacity:.75">'+(P.sub||"")+"</div>";
     const b=document.createElement("button");b.className="chip";b.style.cssText="flex:none;min-width:84px;padding:8px 10px;font-weight:900";b.textContent=done?"✓ Owned":Store.price(pid);if(done)b.style.opacity=".6";else b.onclick=()=>openBuy(pid);row.append(ic,nm,b);el.appendChild(row)});
   if(Store.mode()==="native"){const rb=document.createElement("button");rb.className="chip";rb.style.cssText="margin:8px auto 0;display:block";rb.textContent="Restore purchases";rb.onclick=async()=>{toast("Checking your purchases...");const n=await Store.native.restore();toast(n<0?"Could not reach the store. Try again later.":n?"Restored "+n+" purchase"+(n>1?"s":""):"Nothing new to restore");refreshMenu();renderShop()};el.appendChild(rb)}
-  const n=document.createElement("div");n.style.cssText="font-size:11px;opacity:.65;line-height:1.4;margin:10px 4px";n.textContent=window.__SHOT?"":Store.mode()==="test"?"TESTER MODE: purchases here are free test purchases.":"Purchases use your App Store or Google Play account. Boosters and sparks are delivered instantly.";el.appendChild(n)}
+  const n=document.createElement("div");n.style.cssText="font-size:11px;opacity:.65;line-height:1.4;margin:10px 4px";n.textContent=window.__SHOT?"":Store.mode()==="test"?"TESTER MODE: purchases here are free test purchases.":"Purchases use your "+storeName()+" account. Boosters and sparks are delivered instantly.";el.appendChild(n)}
 let shopArm=null,shopTab="styles";
 function renderShop(){$("shopSparks").textContent="✨ "+sparks()+" sparks";const el=$("shopList");el.innerHTML="";
   $("tabStyles").classList.toggle("off",shopTab!=="styles");$("tabThemes").classList.toggle("off",shopTab!=="themes");$("tabColors").classList.toggle("off",shopTab!=="colors");$("tabMusic").classList.toggle("off",shopTab!=="music");
@@ -1894,7 +1895,7 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-refreshWorlds();applyQ();const BUILD="2026-10-16 b27";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
+refreshWorlds();applyQ();const BUILD="2026-10-16 b28";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
 {let taps=0,tt=0;$("verTag").style.cssText+=";padding:8px 14px;cursor:pointer";$("verTag").onclick=()=>{const n=Date.now();if(n-tt>4000)taps=0;tt=n;taps++;if(taps>=7){taps=0;TESTER=!TESTER;store("hz_tester",TESTER?"1":"0");refreshWorlds();verTxt();refreshMenu();toast(TESTER?"Tester mode ON: unlimited boosters (scores won't count for leaderboards)":"Tester mode OFF")}}}
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});

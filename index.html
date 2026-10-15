@@ -923,7 +923,7 @@ function slotCenter(i){return[120+i*240,TRAY_Y]}
 function snapshot(){return{board:copyBoard(G.board),score:G.score,combo:G.combo,pure:G.pure,lines:G.lines,bestCombo:G.bestCombo,
    pieces:G.pieces.map(p=>({...p})),turn:G.turn,placed:G.placed}}
 /* ============ boosters: earned free by playing ============ */
-const BOOSTS=[{k:"paint",icon:"🎨",name:"Color Changer",tip:"Recolor up to 6 blocks you choose"},{k:"hammer",icon:"🔨",name:"Block Breaker",tip:"Smash up to 6 blocks you choose"},{k:"shuffle",icon:"🔀",name:"Shuffle",tip:"New pieces"},{k:"rewind",icon:"↶",name:"Rewind",tip:"Undo last move"},{k:"rainbow",icon:"🌈",name:"Rainbow Block",tip:"Place a wild block on any empty spot"},{k:"bomb",icon:"💣",name:"Bomb",tip:"Blast a 3x3 area"}];
+const BOOSTS=[{k:"paint",icon:"🎨",name:"Color Changer",tip:"Recolor up to 6 blocks you choose"},{k:"hammer",icon:"🔨",name:"Block Breaker",tip:"Smash up to 6 blocks you choose"},{k:"shuffle",icon:"🔀",name:"Shuffle",tip:"New pieces"},{k:"rewind",icon:"↶",name:"Rewind",tip:"Undo last move"},{k:"rainbow",icon:"🌈",name:"Rainbow Wave",tip:"Fill a row or column with rainbow blocks"},{k:"bomb",icon:"💣",name:"Bomb",tip:"Blast a 3x3 area"}];
 let BO=null,FIRSTBOOST=false,NEWBOOST=false;
 (function(){try{BO=JSON.parse(store("hz_boost")||"null")}catch(e){}if(!BO){BO={paint:1,hammer:1,shuffle:1,rewind:1,rainbow:1,bomb:1};FIRSTBOOST=true;store("hz_boost",JSON.stringify(BO))}else if(BO.rainbow===undefined||BO.bomb===undefined){BO.rainbow=BO.rainbow===undefined?1:BO.rainbow;BO.bomb=BO.bomb===undefined?1:BO.bomb;NEWBOOST=true;store("hz_boost",JSON.stringify(BO))}})();
 function saveBoost(){store("hz_boost",JSON.stringify(BO))}
@@ -947,8 +947,17 @@ function palettePos(i,nc){return[LW/2+(i-(nc-1)/2)*92,TRAY_Y]}
 const MAXSEL=6;
 function confirmRect(){return{x:LW/2-175,y:TRAY_Y-46,w:350,h:92}}
 function targetTap(x,y){const t=G.tgt;
+  if(t.k==="rainbow"&&t.step===2){const rb=waveRect(0),cb=waveRect(1),[vr,vc]=waveValid(t.cell[0],t.cell[1]);
+    if(vr&&x>=rb.x&&x<=rb.x+rb.w&&y>=rb.y&&y<=rb.y+rb.h){applyWave("row",t.cell[0],t.cell[1]);return}
+    if(vc&&x>=cb.x&&x<=cb.x+cb.w&&y>=cb.y&&y<=cb.y+cb.h){applyWave("col",t.cell[0],t.cell[1]);return}}
   if(t.k==="rainbow"||t.k==="bomb"){const cell=boardCellAt(x,y);if(!cell){G.tgt=null;return}const[r,c]=cell;
-    if(t.k==="rainbow"){if(G.board[r][c]!==null){toast("Pick an empty spot");return}applyRainbow(r,c)}else applyBomb(r,c);return}
+    if(t.k==="rainbow"){
+      if(t.step===2){const rb=waveRect(0),cb=waveRect(1);const[vr,vc]=waveValid(t.cell[0],t.cell[1]);
+        if(vr&&x>=rb.x&&x<=rb.x+rb.w&&y>=rb.y&&y<=rb.y+rb.h){applyWave("row",t.cell[0],t.cell[1]);return}
+        if(vc&&x>=cb.x&&x<=cb.x+cb.w&&y>=cb.y&&y<=cb.y+cb.h){applyWave("col",t.cell[0],t.cell[1]);return}}
+      const[a,b]=waveValid(r,c);if(!a&&!b){toast("Pick a row or column that has some blocks and some empty spots");return}
+      t.step=2;t.cell=[r,c];sfx.pick();return}
+    applyBomb(r,c);return}
   if(t.k==="paint"&&t.step===2){const nc=G.cfg.colors;for(let i=0;i<nc;i++){const[px,py]=palettePos(i,nc);if(Math.hypot(x-px,y-py)<46){applyPaint(PAL[i]);return}}G.tgt=null;return}
   const cr=confirmRect();
   if(t.sel.length&&x>=cr.x&&x<=cr.x+cr.w&&y>=cr.y&&y<=cr.y+cr.h){if(t.k==="hammer"){applySmash();return}t.step=2;sfx.pick();return}
@@ -963,9 +972,14 @@ function checkEndAfterBoost(){
   if((G.cfg.kind==="stage"||G.cfg.kind==="daily"||G.cfg.kind==="event")&&G.lines>=G.cfg.goalLines&&G.pure>=G.cfg.goalPure){G.over=true;G.won=true;G.overT=0;confetti();ring(LW/2,BY+320,"#ffd96a",800,1,14);
     [523,659,784,1047,1319].forEach((f,i)=>tone(f,.4,"triangle",.12,null,i*.09));floatText(LW/2,BY+300,"GOAL REACHED!","#ffd96a",70);setTimeout(()=>endGame(),1500);return}
   if(!G.over&&!G.pieces.some(q=>!q.used&&anyFit(G.board,q.s))){G.over=true;G.overT=0;setTimeout(()=>endGame(),900)}}
-function applyRainbow(r,c){spendBoost("rainbow");G.undo=null;G.tgt=null;G.board[r][c]=9;const[x,y]=cellXY(r,c);
-  fx.cells.push({kind:"land",r,c,t:0,delay:0});burst(x+CELL/2,y+CELL/2,9,18,1);sparkle(x+CELL/2,y+CELL/2,4,"#fff");ring(x+CELL/2,y+CELL/2,"#ffd0f4",260,.55,8);sfx.pure();vib([30,20,50]);
-  floatText(LW/2,BY+300,"RAINBOW!","#ffd0f4",60);resolve();G.idle=0;G.hint=null;checkBest();checkEndAfterBoost()}
+function waveRect(i){return{x:i?370:40,y:TRAY_Y-46,w:310,h:92}}
+function waveCount(kind,r,c){let e=0;for(let k=0;k<N;k++){const v=kind==="row"?G.board[r][k]:G.board[k][c];if(v===null)e++}return e}
+function waveValid(r,c){const er=waveCount("row",r,c),ec=waveCount("col",r,c);return[er>0&&er<N,ec>0&&ec<N]}
+function applyWave(kind,r,c){spendBoost("rainbow");G.undo=null;G.tgt=null;let d=0;
+  for(let k=0;k<N;k++){const rr_=kind==="row"?r:k,cc_=kind==="row"?k:c;if(G.board[rr_][cc_]!==null)continue;G.board[rr_][cc_]=9;const[x,y]=cellXY(rr_,cc_);
+    fx.cells.push({kind:"land",r:rr_,c:cc_,t:0,delay:d*.05});burst(x+CELL/2,y+CELL/2,9,10,1);sparkle(x+CELL/2,y+CELL/2,2,"#fff");d++}
+  const[bx,by]=cellXY(r,c);ring(bx+CELL/2,by+CELL/2,"#ffd0f4",380,.6,10);sfx.pure();vib([30,20,60]);
+  floatText(LW/2,BY+300,"RAINBOW WAVE!","#ffd0f4",56);resolve();G.idle=0;G.hint=null;checkBest();checkEndAfterBoost()}
 function applyBomb(r,c){let n=0;for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const rr_=r+dr,cc_=c+dc;if(rr_>=0&&cc_>=0&&rr_<N&&cc_<N&&G.board[rr_][cc_]!==null)n++}
   if(!n){toast("Nothing to blast there");return}
   spendBoost("bomb");G.undo=null;G.tgt=null;const[bx,by]=cellXY(r,c);ring(bx+CELL/2,by+CELL/2,"#ffb347",420,.6,12);ring(bx+CELL/2,by+CELL/2,"#fff",260,.45,7);
@@ -1428,7 +1442,7 @@ function lineCues(){const B=G.board,cues=[];
     ctx.shadowColor=near?"#ffd96a":"rgba("+col.glow+",1)";ctx.shadowBlur=SBQ*(near?26:14);
     if(q.isRow)rr(BX-3,BY+q.i*CELL+2,N*CELL+6,CELL-4,20);else rr(BX+q.i*CELL+2,BY-3,CELL-4,N*CELL+6,20);ctx.stroke();ctx.restore()})}
 function tipBar(pv){let msg="",col="rgba(255,255,255,.75)",size=26;
-  if(G.tgt){const t=G.tgt;const nSel=t.sel.length;msg=t.k==="rainbow"?"Tap an empty spot to place a rainbow block":t.k==="bomb"?"Tap a spot to blast it and the blocks around it":t.step===2?"":((t.k==="hammer"?"Tap up to 6 blocks to smash":"Tap up to 6 blocks to recolor")+"  ("+nSel+"/6)");col="#ffe27a";if(msg){ctx.save();ctx.font="800 28px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=col;ctx.shadowColor="rgba(0,0,0,.7)";ctx.shadowBlur=SBQ*(8);ctx.fillText(msg,LW/2,BY+N*CELL+44);ctx.restore()}return}
+  if(G.tgt){const t=G.tgt;const nSel=t.sel.length;msg=t.k==="rainbow"?(t.step===2?"":"Tap any spot, then choose its row or column"):t.k==="bomb"?"Tap a spot to blast it and the blocks around it":t.step===2?"":((t.k==="hammer"?"Tap up to 6 blocks to smash":"Tap up to 6 blocks to recolor")+"  ("+nSel+"/6)");col="#ffe27a";if(msg){ctx.save();ctx.font="800 28px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=col;ctx.shadowColor="rgba(0,0,0,.7)";ctx.shadowBlur=SBQ*(8);ctx.fillText(msg,LW/2,BY+N*CELL+44);ctx.restore()}return}
   if(pv&&pv.lines.some(l=>l.pure)){msg="PURE CLEAR!  3x + chain";col="#ffd96a";size=34}
   else if(pv&&pv.lines.length){msg="Line clear!";col="#9ee8ff";size=30}
   else if(G.cues&&G.cues.some(q=>q.k>=N-3)){msg="So close! Finish the glowing line in ONE color";col="#ffd96a"}
@@ -1443,7 +1457,12 @@ function boosterBar(){if(noBoost())return;BOOSTS.forEach((b,i)=>{const[x,y]=boos
     ctx.globalAlpha=1;ctx.fillStyle=n?"#ff3d5a":"#555a70";ctx.beginPath();ctx.arc(x+28,y+28,15,0,6.3);ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
     ctx.fillStyle="#fff";ctx.font="900 19px 'Segoe UI',system-ui,sans-serif";ctx.fillText(String(n),x+28,y+29);ctx.restore()})}
 function targetOverlay(){const t=G.tgt;if(!t)return;
-  if(t.k==="rainbow"||t.k==="bomb"){const p0=.5+.5*Math.sin(bgT*8);for(let r=0;r<N;r++)for(let c=0;c<N;c++){if(t.k==="rainbow"&&G.board[r][c]!==null)continue;const[x,y]=cellXY(r,c);ctx.save();ctx.strokeStyle=t.k==="rainbow"?"rgba(255,226,122,"+(.25+.35*p0)+")":"rgba(255,160,90,"+(.15+.2*p0)+")";ctx.lineWidth=3;rr(x+4,y+4,CELL-8,CELL-8,16);ctx.stroke();ctx.restore()}return}
+  if(t.k==="rainbow"&&t.step===2){const p0=.5+.5*Math.sin(bgT*8),[r0,c0]=t.cell,[vr,vc]=waveValid(r0,c0);
+    ctx.save();ctx.strokeStyle="rgba(255,208,244,"+(.6+.4*p0)+")";ctx.lineWidth=5;if(vr)rr(BX-3,BY+r0*CELL+2,N*CELL+6,CELL-4,20),ctx.stroke();if(vc)rr(BX+c0*CELL+2,BY-3,CELL-4,N*CELL+6,20),ctx.stroke();ctx.restore();
+    ctx.fillStyle="rgba(10,6,40,.92)";rr(30,TRAY_Y-120,660,240,34);ctx.fill();ctx.strokeStyle="rgba(255,255,255,.3)";ctx.lineWidth=2;rr(30,TRAY_Y-120,660,240,34);ctx.stroke();
+    ctx.fillStyle="#fff";ctx.font="800 24px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("Fill with rainbow blocks to complete the line",LW/2,TRAY_Y-90);
+    [["ROW",vr,waveCount("row",r0,c0)],["COLUMN",vc,waveCount("col",r0,c0)]].forEach((b,i)=>{const R=waveRect(i);ctx.save();ctx.globalAlpha=b[1]?1:.35;const g=ctx.createLinearGradient(0,R.y,0,R.y+R.h);g.addColorStop(0,"#ffd0f4");g.addColorStop(1,"#a64dff");ctx.fillStyle=g;rr(R.x,R.y,R.w,R.h,30);ctx.fill();ctx.strokeStyle="rgba(255,255,255,.7)";ctx.lineWidth=3;rr(R.x,R.y,R.w,R.h,30);ctx.stroke();ctx.fillStyle="#2a0a4a";ctx.font="900 28px 'Segoe UI',system-ui,sans-serif";ctx.fillText("FILL "+b[0],R.x+R.w/2,R.y+34);ctx.font="700 20px 'Segoe UI',system-ui,sans-serif";ctx.fillText(b[1]?b[2]+" empty spot"+(b[2]>1?"s":""):"not possible here",R.x+R.w/2,R.y+66);ctx.restore()});return}
+  if(t.k==="rainbow"||t.k==="bomb"){const p0=.5+.5*Math.sin(bgT*8);for(let r=0;r<N;r++)for(let c=0;c<N;c++){if(false)continue;const[x,y]=cellXY(r,c);ctx.save();ctx.strokeStyle=t.k==="rainbow"?"rgba(255,226,122,"+(.25+.35*p0)+")":"rgba(255,160,90,"+(.15+.2*p0)+")";ctx.lineWidth=3;rr(x+4,y+4,CELL-8,CELL-8,16);ctx.stroke();ctx.restore()}return}
   const pu=.5+.5*Math.sin(bgT*8),isSel=(r,c)=>t.sel.some(q=>q[0]===r&&q[1]===c);
   const outline=(r,c,sel)=>{const[x,y]=cellXY(r,c);ctx.save();ctx.strokeStyle=sel?"rgba(255,255,255,1)":"rgba(255,226,122,"+(.3+.4*pu)+")";ctx.lineWidth=sel?7:4;ctx.shadowColor=sel?"#fff":"#ffd96a";ctx.shadowBlur=SBQ*(sel?26:14);rr(x+3,y+3,CELL-6,CELL-6,18);ctx.stroke();
     if(sel){ctx.fillStyle="rgba(255,255,255,.28)";rr(x+3,y+3,CELL-6,CELL-6,18);ctx.fill()}ctx.restore()};
@@ -1554,7 +1573,7 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-applyQ();const BUILD="2026-10-15 b12";$("verTag").textContent="Huezel build "+BUILD;
+applyQ();const BUILD="2026-10-15 b13";$("verTag").textContent="Huezel build "+BUILD;
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});
 document.addEventListener("visibilitychange",()=>{if(document.hidden||state==="play")return;siteTag().then(t=>{if(t&&SITE_TAG&&t!==SITE_TAG){toast("New update! Reloading...");setTimeout(()=>location.reload(),900)}})});

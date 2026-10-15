@@ -105,6 +105,7 @@
     <button class="chip" id="tVibe">Vibrate: on</button>
     <button class="chip off" id="tCB">Color-blind symbols: off</button>
   </div>
+  <div id="verTag" style="opacity:.45;font-size:11px;font-weight:700"></div>
   <div id="iosTip" style="display:none;max-width:320px;font-size:13px;font-weight:700;line-height:1.4;color:#ffe9a8;background:rgba(255,200,60,.12);border:1px solid rgba(255,226,122,.5);border-radius:14px;padding:8px 12px">Tip: tap Share, then Add to Home Screen, and play from the icon. Safari can erase saved progress from a web page!</div>
   <div class="row"><button class="chip" id="bAch" style="border-color:#ffd96a;color:#ffe9a8">🏆 Trophies</button><button class="chip" id="bShop" style="border-color:#7ee8ff;color:#c8f2ff">🛍 Shop</button><button class="chip" id="bMis" style="border-color:#ffd96a;color:#ffe9a8">✨ Daily missions</button></div>
   <div class="row"><button class="chip" id="bStats">📊 Stats</button><button class="chip" id="bHow">How to play</button><button class="chip" id="bSave">Save / restore progress</button></div>
@@ -1460,8 +1461,12 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-applyQ();requestAnimationFrame(frame);
-if("serviceWorker" in navigator&&location.protocol.startsWith("http")){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+applyQ();const BUILD="2026-10-15 b7";$("verTag").textContent="Huezel build "+BUILD;
+let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
+siteTag().then(t=>{SITE_TAG=t});
+document.addEventListener("visibilitychange",()=>{if(document.hidden||state==="play")return;siteTag().then(t=>{if(t&&SITE_TAG&&t!==SITE_TAG){toast("New update! Reloading...");setTimeout(()=>location.reload(),900)}})});
+requestAnimationFrame(frame);
+if("serviceWorker" in navigator&&location.protocol.startsWith("http")){addEventListener("load",()=>navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(()=>{}))}
 (function(){const q=new URLSearchParams(location.search).get("c");if(!q)return;const a=q.split(".");if(!/^[a-z0-9]{3,12}$/.test(a[0]||"")||!(+a[1]>=0))return;
   let nm="A friend";try{nm=decodeURIComponent(a[2]||"A friend")}catch(e){}nm=nm.replace(/[^\w \-']/g,"").slice(0,14)||"A friend";
   startGame("classic",0,0,{seed:a[0],chal:{name:nm,score:+a[1]}})})();

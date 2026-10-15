@@ -403,7 +403,7 @@ MU.danger=0;
 /* ---- original music: four styles, each a looping song with drums, bass, chords and melody ---- */
 MU.style="bounce";
 const MSTYLES=["auto","bounce","dream","chill","arcade"];
-const MBPM={bounce:112,dream:78,chill:86,arcade:138,retro:150,spooky:90,jazz:100,piano:74,festive:98};
+const MBPM={bounce:112,dream:78,chill:86,arcade:138,retro:150,spooky:72,jazz:100,piano:74,festive:98};
 function desiredStyle(){if(MU.pv&&performance.now()<MU.pvEnd)return MU.pv;if(opt.mstyle!=="auto"){const m=opt.mstyle;if(MPLAY[m]&&(["bounce","dream","chill","arcade"].includes(m)||isOwned(m)))return m;return"dream"}if(state!=="play"||typeof G==="undefined"||!G)return"dream";return G.mstyle||"bounce"}
 let LASTSTYLE="";function pickStyle(){const pool=["bounce","dream","chill","arcade"].concat(MUSIC_PACKS.filter(m=>isOwned(m.id)).map(m=>m.id)).filter(x=>x!==LASTSTYLE);LASTSTYLE=pool[Math.floor(Math.random()*pool.length)];return LASTSTYLE}
 function mn(t,m,d,type,v,dest,att){mnote(t,mf(m),d,type,v,dest||MU.master,att===undefined?.006:att)}
@@ -451,14 +451,18 @@ function playRetro(t,s,bar,dg){const ci=bar%4,ch=R_CH[ci],m=R_MEL[ci][s];
   if(s%2===0)mn(t,R_ROOT[ci]+(s%4===2?12:0),.1,"square",.045);mn(t,ch[s%3]+24,.06,"square",.018);
   if(s===0||s===8)mkick(t,.13);if(s===4||s===12)msnare(t,.07);if(s%2===0)mhat(t,.015,false);
   if(m)mn(t,m,.2,"triangle",.07,MU.echo,.003)}
-// Spooky: music box bells over a slow dark drone (D harmonic minor)
-const SP_CH=[[62,65,69],[58,62,65],[55,58,62],[57,61,64]],SP_ROOT=[38,34,43,33],SP_B=[74,77,81,82,85,86];
+// Spooky: slow haunted-house mood (A minor with a flat 2nd): dark drone, heartbeat, wind, a gliding ghost voice and clashing music-box bells
+function mslide(t,f1,f2,d,v,dest){const a=AC,o=a.createOscillator(),g=a.createGain(),l=a.createOscillator(),lg=a.createGain();o.type="sine";o.frequency.setValueAtTime(f1,t);o.frequency.linearRampToValueAtTime(f2,t+d*.65);
+  l.frequency.value=5.5;lg.gain.value=f1*.012;l.connect(lg).connect(o.frequency);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+d*.35);g.gain.linearRampToValueAtTime(0,t+d);o.connect(g).connect(dest||MU.master);o.start(t);l.start(t);o.stop(t+d+.1);l.stop(t+d+.1)}
+const SP_CH=[[57,60,64],[58,62,65],[57,60,64],[56,59,64]],SP_ROOT=[33,34,33,40],SP_T=[[81,80],[77,76],[84,83],[80,75]];
 function playSpooky(t,s,bar,dg,spb){const ci=bar%4,ch=SP_CH[ci];
-  if(s===0){ch.forEach(n=>mn(t,n,spb*15,"sine",.045,MU.pad,.9));mn(t,SP_ROOT[ci],spb*15,"sine",.11,MU.master,.1);mkick(t,.08)}
-  if(s===3)mkick(t,.05);
-  if(s%4===0&&((bar*5+s*3)%7<3)){const m=SP_B[(bar*2+s)%SP_B.length];mn(t,m,.9,"sine",.06,MU.echo,.004);mn(t,m+12,.5,"triangle",.02,MU.echo,.004)}
-  if(s===8)mnoise(t,spb*6,900,.6,.014,"bandpass");
-  if(s===12&&bar%4===3)mn(t,SP_B[0]+1,.8,"sine",.04,MU.echo,.01)}
+  if(s===0){ch.forEach(n=>mn(t,n,spb*15,"sine",.035,MU.pad,1.1));mn(t,SP_ROOT[ci],spb*15.5,"sine",.15,MU.master,.15);mn(t,SP_ROOT[ci]+12,spb*15,"triangle",.03,MU.master,.5);
+    mslide(t+spb*2,mf(SP_T[ci][0]),mf(SP_T[ci][1]),spb*11,.05,MU.echo);mnoise(t,spb*14,500+ci*120,.7,.018,"bandpass")}
+  if(s===0||s===2)mkick(t,s===0?.11:.07);
+  if(s===6&&bar%2===0){mn(t,76,.9,"sine",.05,MU.echo,.004);mn(t+spb*.5,77,.9,"sine",.04,MU.echo,.004)}
+  if(s===13&&bar%4===1){mn(t,88,.8,"sine",.04,MU.echo,.004);mn(t+spb*.5,87,.8,"sine",.035,MU.echo,.004)}
+  if(s===12&&bar%8===7){[33,34,40].forEach(n=>mn(t,n,.7,"sawtooth",.04,MU.master,.01));mnoise(t,.5,300,.5,.05,"bandpass")}
+  if(s===8&&bar%4===2)mnoise(t,spb*5,2200,6,.012,"bandpass")}
 // Midnight Jazz: slow, smooth lounge. Sustained chords, simple bass, one clear tune (Dm7 G7 Cmaj7 Am7). No echo, so every note lands on the beat.
 const J_CH=[[53,57,60,64],[53,55,59,62],[55,59,60,64],[52,55,60,64]],J_ROOT=[38,43,36,45];
 const J_MEL=[[74,0,0,0,72,0,0,0,69,0,0,0,72,0,0,0],[71,0,0,0,69,0,0,0,67,0,0,0,71,0,0,0],[72,0,0,0,76,0,0,0,79,0,0,0,76,0,0,0],[76,0,0,0,72,0,0,0,69,0,0,0,72,0,0,0]];
@@ -1461,7 +1465,7 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-applyQ();const BUILD="2026-10-15 b7";$("verTag").textContent="Huezel build "+BUILD;
+applyQ();const BUILD="2026-10-15 b8";$("verTag").textContent="Huezel build "+BUILD;
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});
 document.addEventListener("visibilitychange",()=>{if(document.hidden||state==="play")return;siteTag().then(t=>{if(t&&SITE_TAG&&t!==SITE_TAG){toast("New update! Reloading...");setTimeout(()=>location.reload(),900)}})});

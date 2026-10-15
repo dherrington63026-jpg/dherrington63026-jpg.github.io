@@ -1409,7 +1409,16 @@ addEventListener("keydown",e=>{if(e.key==="u"||e.key==="U")boostTap("rewind")});
 let last=performance.now();
 function applyQ(){if(GFX==="high")Q=2;else if(GFX==="low")Q=0;
   SBQ=[0,.5,1][Q];PQ=[.35,.65,1][Q];PCAP=[70,130,220][Q];DPRCAP=GFX==="high"?2.5:[1.25,1.75,2][Q];document.body.classList.toggle("lowfx",Q<2);resize();panelKey="";sceneKey=""}
-function frame(now){const raw=(now-last)/1000;
+/* iOS can wipe the memory behind off-screen canvases while the app sleeps. Rebuild every cached picture when that happens. */
+function healCaches(){for(const k in sprites)delete sprites[k];panelKey="";sceneKey="";bgcKey=null}
+let bgcKey=null,lastHeal=0;
+function cacheBlank(cv){try{if(!cv||!cv.width)return false;const d=cv.getContext("2d").getImageData(cv.width>>1,cv.height>>1,1,1).data;return d[3]===0}catch(e){return false}}
+function checkCaches(){const sp=sprites[BST+"0"];if(sp&&cacheBlank(sp.k)){healCaches();return}
+  if(panelC&&panelKey&&cacheBlank(panelC)){panelKey="";}
+  if(sceneC&&sceneKey&&cacheBlank(sceneC)){sceneKey=""}}
+["visibilitychange","pageshow","focus","resume"].forEach(ev=>addEventListener(ev,()=>{if(ev==="visibilitychange"&&document.hidden)return;healCaches()}));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)healCaches()});
+function frame(now){const raw=(now-last)/1000;if(now-lastHeal>2500){lastHeal=now;checkCaches()}
   if(state!=="play"&&Q<2&&(++frameN&1)){requestAnimationFrame(frame);return}
   if((state==="play"||Q===2)&&raw<.12){fpsAcc+=raw;fpsN++;if(fpsN>=60){const avg=fpsAcc/fpsN;fpsAcc=0;fpsN=0;if(GFX==="auto"&&avg>.024&&Q>0){Q--;applyQ()}}}
   let dt=Math.min(raw,.05);last=now;if(fx.slow>0){fx.slow-=dt;dt*=.12}update(dt);render();requestAnimationFrame(frame)}
@@ -1697,7 +1706,7 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-applyQ();const BUILD="2026-10-15 b18";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
+applyQ();const BUILD="2026-10-15 b19";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
 {let taps=0,tt=0;$("verTag").style.cssText+=";padding:8px 14px;cursor:pointer";$("verTag").onclick=()=>{const n=Date.now();if(n-tt>4000)taps=0;tt=n;taps++;if(taps>=7){taps=0;TESTER=!TESTER;store("hz_tester",TESTER?"1":"0");verTxt();refreshMenu();toast(TESTER?"Tester mode ON: unlimited boosters (scores won't count for leaderboards)":"Tester mode OFF")}}}
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});

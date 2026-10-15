@@ -212,7 +212,8 @@
   <div class="panel" style="text-align:center;max-height:92vh;overflow:auto;width:min(92vw,380px)">
     <div class="lbl">Leaderboards</div>
     <div class="row" style="margin:8px 0" id="lbTabs"></div>
-    <div class="row" style="margin:4px 0 8px"><button class="chip" id="lbWeek">This week</button><button class="chip" id="lbPrevW">Last week</button><button class="chip" id="lbToday">Today</button></div>
+    <div class="row" id="lbSub" style="margin:4px 0 8px;display:none"></div>
+    <div class="row" style="margin:4px 0 8px" id="lbRangeRow"><button class="chip" id="lbWeek">This week</button><button class="chip" id="lbPrevW">Last week</button><button class="chip" id="lbToday">Today</button></div>
     <div style="font-size:15px;font-weight:900;color:#ffd96a;margin:4px 0" id="lbTitle"></div>
     <div id="lbList" style="text-align:left;margin:8px 0"></div>
     <div id="lbMe" style="font-weight:800;font-size:13px;color:#7ee8ff;margin-bottom:8px"></div>
@@ -749,17 +750,18 @@ async function lbClaims(){if(!LB_API)return;let r;try{r=await lbGet("/claims?dev
   let done=[];try{done=JSON.parse(store("hz_lbc")||"[]")}catch(e){}let add=0;const msg=[],KN={trial:"Time Trial",dash:"Dash",weekly:"Weekly",classic:"Classic"};
   r.claims.forEach(c=>{if(done.includes(c.board))return;const amt=c.amt||[0,50,30,20][c.rank]||0;if(!amt)return;done.push(c.board);add+=amt;msg.push("#"+c.rank+" "+(KN[c.kind]||c.kind));ST.podium=(ST.podium||0)+1});
   if(add){store("hz_lbc",JSON.stringify(done.slice(-80)));store("hz_sparks",String(sparks()+add));saveST();toast("🏅 Leaderboard prizes: +"+add+" ✨ ("+msg.join(", ")+")");achCheck();refreshMenu()}}
-let lbTab="trial",lbRange="week";
-function lbBoardId(){const w=lbRange==="prev"?-1:0;
+let lbTab="trial",lbRange="week",lbSubK="classic";
+function lbBoardId(){const w=lbRange==="prev"?-1:0;if(lbTab==="all")return"alltime:"+lbSubK;
   if(lbTab==="trial"||lbTab==="dash")return lbRange==="today"?lbTab+":"+todayStr():lbTab+"w:"+weekStr(w);
   return lbTab+":"+weekStr(w)}
-async function renderLb(){const tabs=[["trial","⏱ Time Trial"],["dash","🔥 Dash"],["weekly","🗓 Weekly"],["classic","♾ Classic"]];
+async function renderLb(){const tabs=[["trial","⏱ Time Trial"],["dash","🔥 Dash"],["weekly","🗓 Weekly"],["classic","♾ Classic"],["all","🏆 All-time"]];
   $("lbTabs").innerHTML="";tabs.forEach(t=>{const b=document.createElement("button");b.className="chip"+(lbTab===t[0]?"":" off");b.textContent=t[1];b.onclick=()=>{lbTab=t[0];if(lbRange==="today"&&(t[0]==="weekly"||t[0]==="classic"))lbRange="week";renderLb()};$("lbTabs").appendChild(b)});
-  const daily=lbTab==="trial"||lbTab==="dash";$("lbToday").style.display=daily?"":"none";
+  const daily=lbTab==="trial"||lbTab==="dash",isAll=lbTab==="all";$("lbToday").style.display=daily?"":"none";$("lbRangeRow").style.display=isAll?"none":"";$("lbSub").style.display=isAll?"":"none";
+  if(isAll){$("lbSub").innerHTML="";[["classic","Classic"],["trial","Time Trial"],["dash","Dash"]].forEach(t=>{const b=document.createElement("button");b.className="chip"+(lbSubK===t[0]?"":" off");b.textContent=t[1];b.onclick=()=>{lbSubK=t[0];renderLb()};$("lbSub").appendChild(b)})}
   $("lbWeek").classList.toggle("off",lbRange!=="week");$("lbPrevW").classList.toggle("off",lbRange!=="prev");$("lbToday").classList.toggle("off",lbRange!=="today");
   const names={trial:"Daily Time Trial · your best score each day, added up for the week",dash:"Daily Dash · your best score each day, added up for the week",weekly:"Weekly Challenge · fewest pieces to solve it",classic:"Classic · best score of the week (no boosters)"};
-  $("lbTitle").textContent=lbRange==="today"?(lbTab==="trial"?"Today's Time Trial · most points in 90 seconds":"Today's Daily Dash · most points in 15 pieces"):names[lbTab];
-  $("lbNote").textContent=(lbRange==="today"?"Today's board is for bragging. ":"")+"Top 3 on each weekly board win ✨ sparks when the week ends (50 / 30 / 20). Every score is checked by replaying your moves on the server.";
+  $("lbTitle").textContent=isAll?({classic:"All-time best Classic game (no boosters)",trial:"All-time best Time Trial run",dash:"All-time best Daily Dash"})[lbSubK]:lbRange==="today"?(lbTab==="trial"?"Today's Time Trial · most points in 90 seconds":"Today's Daily Dash · most points in 15 pieces"):names[lbTab];
+  $("lbNote").textContent=isAll?"All-time boards are just for bragging rights. No prizes. Every score is checked by replaying your moves on the server.":(lbRange==="today"?"Today's board is for bragging. ":"")+"Top 3 on each weekly board win ✨ sparks when the week ends (50 / 30 / 20). Every score is checked by replaying your moves on the server.";
   if(!LB_API){$("lbList").innerHTML='<div style="opacity:.8;font-weight:700;line-height:1.5;padding:14px 4px;text-align:center">Online leaderboards are coming soon! Keep playing and your best scores will count when they turn on.</div>';$("lbMe").textContent="";return}
   $("lbList").innerHTML='<div style="opacity:.7;text-align:center;padding:14px">Loading...</div>';$("lbMe").textContent="";
   let r;try{r=await lbGet("/top?board="+encodeURIComponent(lbBoardId())+"&dev="+devId()+"&limit=20")}catch(e){$("lbList").innerHTML='<div style="opacity:.8;text-align:center;padding:14px">Could not reach the leaderboard. Try again later.</div>';return}
@@ -1535,7 +1537,7 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-applyQ();const BUILD="2026-10-15 b10";$("verTag").textContent="Huezel build "+BUILD;
+applyQ();const BUILD="2026-10-15 b11";$("verTag").textContent="Huezel build "+BUILD;
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});
 document.addEventListener("visibilitychange",()=>{if(document.hidden||state==="play")return;siteTag().then(t=>{if(t&&SITE_TAG&&t!==SITE_TAG){toast("New update! Reloading...");setTimeout(()=>location.reload(),900)}})});

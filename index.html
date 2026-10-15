@@ -925,16 +925,17 @@ function snapshot(){return{board:copyBoard(G.board),score:G.score,combo:G.combo,
 /* ============ boosters: earned free by playing ============ */
 const BOOSTS=[{k:"paint",icon:"🎨",name:"Color Changer",tip:"Recolor up to 6 blocks you choose"},{k:"hammer",icon:"🔨",name:"Block Breaker",tip:"Smash up to 6 blocks you choose"},{k:"shuffle",icon:"🔀",name:"Shuffle",tip:"New pieces"},{k:"rewind",icon:"↶",name:"Rewind",tip:"Undo last move"},{k:"rainbow",icon:"🌈",name:"Rainbow Wave",tip:"Fill a row or column with rainbow blocks"},{k:"bomb",icon:"💣",name:"Bomb",tip:"Blast a 3x3 area"}];
 let BO=null,FIRSTBOOST=false,NEWBOOST=false;
+let TESTER=false;try{TESTER=localStorage.getItem("hz_tester")==="1"}catch(e){}
 (function(){try{BO=JSON.parse(store("hz_boost")||"null")}catch(e){}if(!BO){BO={paint:1,hammer:1,shuffle:1,rewind:1,rainbow:1,bomb:1};FIRSTBOOST=true;store("hz_boost",JSON.stringify(BO))}else if(BO.rainbow===undefined||BO.bomb===undefined){BO.rainbow=BO.rainbow===undefined?1:BO.rainbow;BO.bomb=BO.bomb===undefined?1:BO.bomb;NEWBOOST=true;store("hz_boost",JSON.stringify(BO))}})();
 function saveBoost(){store("hz_boost",JSON.stringify(BO))}
 function addBoost(k,n=1){BO[k]=Math.min(9,(BO[k]||0)+n);saveBoost()}
 function randBoost(){return BOOSTS[Math.floor(Math.random()*BOOSTS.length)].k}
 function boostIcon(k){return BOOSTS.find(b=>b.k===k).icon}
-function spendBoost(k){BO[k]=Math.max(0,BO[k]-1);saveBoost();G.boostUsed=(G.boostUsed||0)+1}
+function spendBoost(k){if(TESTER){G.boostUsed=(G.boostUsed||0)+1;return}BO[k]=Math.max(0,BO[k]-1);saveBoost();G.boostUsed=(G.boostUsed||0)+1}
 function boostPos(i){return[85+i*110,1232]}
 function boostTap(k){if(!G||G.over||G.drag||state!=="play")return;
   if(G.tgt&&G.tgt.k===k){G.tgt=null;return}G.tgt=null;
-  if(!BO[k]){toast("None left. Earn more by clearing stages and solving the weekly!");return}
+  if(!BO[k]&&!TESTER){toast("None left. Earn more by clearing stages and solving the weekly!");return}
   if(k==="rewind"){if(!G.undo){toast("Nothing to rewind yet");return}
     const u=G.undo;if(u.mm){const o=MP();o.pieces=Math.max(0,(o.pieces||0)-1);o.lines=Math.max(0,(o.lines||0)-u.mm.l);o.pure=Math.max(0,(o.pure||0)-u.mm.p);store("hz_mp",JSON.stringify(o));ST.pieces=Math.max(0,(ST.pieces||0)-1);ST.lines=Math.max(0,(ST.lines||0)-u.mm.l);ST.pure=Math.max(0,(ST.pure||0)-u.mm.p);saveST()}
     G.board=u.board;G.score=u.score;G.combo=u.combo;G.pure=u.pure;G.lines=u.lines;G.bestCombo=u.bestCombo;G.pieces=u.pieces;G.turn=u.turn;G.placed=u.placed;
@@ -1122,7 +1123,7 @@ function refreshMenu(){const st=+store("hz_streak")||0,last=store("hz_last_daily
   const firstTime=!store("hz_tut_done")&&totalStars()===0;$("bStage").classList.toggle("pulse",firstTime);
   $("stageSub").textContent=firstTime?"tap here to start!":"level "+maxLevel()+" · "+totalStars()+" stars";
   $("menuStars").textContent="★ "+totalStars();$("mapStars").textContent="★ "+totalStars();
-  $("menuBoost").innerHTML=BOOSTS.map(b=>b.icon+" "+(BO[b.k]||0)).join('<span style="opacity:.4">·</span>')}
+  $("menuBoost").innerHTML=BOOSTS.map(b=>b.icon+" "+(TESTER?"∞":(BO[b.k]||0))).join('<span style="opacity:.4">·</span>')}
 function goalText(c){return c.kind==="classic"?"":("Clear "+c.goalLines+" lines")}
 function tipFor(c){
   if(c.kind==="daily")return"Smash the "+DESIGNS[c.design].name.toLowerCase()+"! The picture is made of colored blocks. Fill lines to clear it, and make PURE lines to blow up touching blocks of the same color. Same puzzle for everyone, all week.";
@@ -1449,13 +1450,13 @@ function tipBar(pv){let msg="",col="rgba(255,255,255,.75)",size=26;
   else if(G.cues&&G.cues.length){msg="Glowing line = one color so far. Keep going!";col="#ffe9a8"}
   else if(G.cfg.kind!=="classic"&&G.cfg.goalPure&&(G.cfg.kind==="daily"||(G.cfg.idx||G.cfg.n)<=8)){msg="Fill a whole line with ONE color = PURE";col="rgba(255,255,255,.7)"}
   if(!msg)return;ctx.save();ctx.font="800 "+size+"px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=col;ctx.shadowColor="rgba(0,0,0,.7)";ctx.shadowBlur=SBQ*(8);ctx.fillText(msg,LW/2,BY+N*CELL+44);ctx.restore()}
-function boosterBar(){if(noBoost())return;BOOSTS.forEach((b,i)=>{const[x,y]=boostPos(i),n=BO[b.k]||0,act=G.tgt&&G.tgt.k===b.k,pu=.5+.5*Math.sin(bgT*6);ctx.save();ctx.globalAlpha=n?1:.4;
+function boosterBar(){if(noBoost())return;BOOSTS.forEach((b,i)=>{const[x,y]=boostPos(i),n=TESTER?99:(BO[b.k]||0),act=G.tgt&&G.tgt.k===b.k,pu=.5+.5*Math.sin(bgT*6);ctx.save();ctx.globalAlpha=n?1:.4;
     const g=ctx.createLinearGradient(0,y-38,0,y+38);g.addColorStop(0,act?"rgba(255,226,122,.65)":"rgba(255,255,255,.3)");g.addColorStop(1,act?"rgba(255,180,40,.25)":"rgba(255,255,255,.07)");
     ctx.fillStyle=g;ctx.strokeStyle=act?"rgba(255,226,122,"+(.6+.4*pu)+")":"rgba(255,255,255,.35)";ctx.lineWidth=act?5:2;if(act){ctx.shadowColor="#ffd96a";ctx.shadowBlur=SBQ*(24)}
     ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();ctx.shadowBlur=SBQ*(0);
     ctx.font="700 38px 'Segoe UI Emoji','Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle="#fff";ctx.fillText(b.icon,x,y+2);
     ctx.globalAlpha=1;ctx.fillStyle=n?"#ff3d5a":"#555a70";ctx.beginPath();ctx.arc(x+28,y+28,15,0,6.3);ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
-    ctx.fillStyle="#fff";ctx.font="900 19px 'Segoe UI',system-ui,sans-serif";ctx.fillText(String(n),x+28,y+29);ctx.restore()})}
+    ctx.fillStyle="#fff";ctx.font="900 19px 'Segoe UI',system-ui,sans-serif";ctx.fillText(TESTER?"∞":String(n),x+28,y+29);ctx.restore()})}
 function targetOverlay(){const t=G.tgt;if(!t)return;
   if(t.k==="rainbow"&&t.step===2){const p0=.5+.5*Math.sin(bgT*8),[r0,c0]=t.cell,[vr,vc]=waveValid(r0,c0);
     ctx.save();ctx.strokeStyle="rgba(255,208,244,"+(.6+.4*p0)+")";ctx.lineWidth=5;if(vr)rr(BX-3,BY+r0*CELL+2,N*CELL+6,CELL-4,20),ctx.stroke();if(vc)rr(BX+c0*CELL+2,BY-3,CELL-4,N*CELL+6,20),ctx.stroke();ctx.restore();
@@ -1573,7 +1574,8 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-applyQ();const BUILD="2026-10-15 b13";$("verTag").textContent="Huezel build "+BUILD;
+applyQ();const BUILD="2026-10-15 b14";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
+{let taps=0,tt=0;$("verTag").style.cssText+=";padding:8px 14px;cursor:pointer";$("verTag").onclick=()=>{const n=Date.now();if(n-tt>4000)taps=0;tt=n;taps++;if(taps>=7){taps=0;TESTER=!TESTER;store("hz_tester",TESTER?"1":"0");verTxt();refreshMenu();toast(TESTER?"Tester mode ON: unlimited boosters (scores won't count for leaderboards)":"Tester mode OFF")}}}
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});
 document.addEventListener("visibilitychange",()=>{if(document.hidden||state==="play")return;siteTag().then(t=>{if(t&&SITE_TAG&&t!==SITE_TAG){toast("New update! Reloading...");setTimeout(()=>location.reload(),900)}})});

@@ -259,7 +259,7 @@ const COLORS=[
  {name:"yellow",light:"#fff39a", base:"#ffc21a", dark:"#c46d00", glow:"255,194,26", emoji:"🟨"},
  {name:"purple",light:"#e2b4ff", base:"#a64dff", dark:"#5a1fa8", glow:"166,77,255", emoji:"🟪"},
  {name:"stone", light:"#e4e8f2", base:"#8d96ac", dark:"#3f475c", glow:"150,160,185", emoji:"⬜"},
- {name:"orange",light:"#ffc48a", base:"#ff8a1f", dark:"#b04a00", glow:"255,138,31", emoji:"🟧"},
+ {name:"orange",light:"#ffb085", base:"#ff6a1a", dark:"#a83a00", glow:"255,106,26", emoji:"🟧"},
  {name:"teal",  light:"#9ffff0", base:"#12d6c0", dark:"#087a75", glow:"18,214,192", emoji:"🩵"},
  {name:"pink",  light:"#ffc0ea", base:"#ff6fc8", dark:"#a8267e", glow:"255,111,200", emoji:"🩷"},
  {name:"rainbow",light:"#ffffff",base:"#ff8ad8", dark:"#6a3dff", glow:"255,160,230", emoji:"🌈"},
@@ -583,27 +583,29 @@ function cellXY(r,c){return[BX+c*CELL,BY+r*CELL]}
 const DESIGNS={
  apple:{name:"Apple",emoji:"🍎",rows:["....g...", "...gg...", ".rr.rrr.", "rrrrrrrr", "rryrrrrr", "rrrrrrrr", "rrrrrrrr", ".rrrrrr.", "..rrrr.."]},
  leaf:{name:"Autumn Leaf",emoji:"🍂",rows:["...y....", "..yry...", ".yrrry..", "rrryrrr.", "rrryrrrr", ".rryrrr.", "..rrrr..", "...y...."]},
- pumpkin:{name:"Pumpkin",emoji:"🎃",rows:["...gg...", ".yyyyyy.", "yyryyryy", "yyyyyyyy", "yryyyyry", ".yrrrry.", "..yyyy.."]},
+ pumpkin:{name:"Pumpkin",emoji:"🎃",rows:["...gg...", ".oooooo.", "oyooooyo", "oooyyooo", "oyyyyyyo", ".oooooo.", "..oooo.."]},
  corn:{name:"Corn",emoji:"🌽",rows:["...yy...", "..yyyy..", ".gyyyyg.", ".gyyyyg.", "..yyyy..", "..gyyg..", "...gg...", "...g...."]},
- pie:{name:"Pumpkin Pie",emoji:"🥧",rows:["..yyyy..", ".yrprry.", "yrprprpy", "yprrprry", ".yrprry.", "..yyyy.."]},
- yam:{name:"Yams",emoji:"🍠",rows:["...gg...", "..pppp..", ".pprppp.", "pppppprp", "pprpppp.", ".ppppp..", "..ppp...", "...p...."]},
+ pie:{name:"Pumpkin Pie",emoji:"🥧",rows:["..yyyy..", ".yooooy.", "yoorrooy", "yorkkroy", "yoorrooy", ".yooooy.", "..yyyy.."]},
+ yam:{name:"Yams",emoji:"🍠",rows:["...gg...", "..oooo..", ".oooooo.", "oooroooo", "oooooroo", ".oooooo.", "..oooo..", "...oo..."]},
  turkey:{name:"Turkey",emoji:"🦃",rows:["ry.gb.yr", ".rygbyr.", "rygbbgyr", ".ygrrgy.", "..rrrr..", "..rpyr..", "...yy...", "..y..y.."]},
- gingerbread:{name:"Gingerbread",emoji:"🍪",rows:["..yyyy..", "..ybyy..", "yyyyyyyy", "..yryy..", "..yyyy..", "..yryy..", ".yy..yy.", ".yy..yy."]},
+ gingerbread:{name:"Gingerbread",emoji:"🍪",rows:["..oooo..", "..opop..", "..osso..", "oooooooo", "..oroo..", "..ogoo..", ".oo..oo.", ".oo..oo."]},
  tree:{name:"Christmas Tree",emoji:"🎄",rows:["...y....", "...gg...", "..grgg..", ".gggrgg.", "..gggg..", ".ggrgggg", "gggggrgg", "...ss..."]},
- santa:{name:"Santa",emoji:"🎅",rows:["...ss...", "..rrrr..", ".rrrrrr.", "ssssssss", ".yyyyyy.", ".ybyyby.", ".yyyryy.", "ssyyyyss", ".ssssss."]},
+ santa:{name:"Santa",emoji:"🎅",rows:["...rrs..", "..rrrr..", ".rrrrrr.", "ssssssss", ".kkkkkk.", ".kpkkpk.", "sskkrkss", "ssssssss", ".ssssss."]},
  reindeer:{name:"Reindeer",emoji:"🦌",rows:["y.y..y.y", "yyy..yyy", ".yyyyyy.", ".ybyyby.", ".yyyyyy.", "..yyyy..", "...rr..."]},
- snowman:{name:"Snowman",emoji:"⛄",rows:["..pppp..", "..pppp..", ".bbbbbb.", ".bsbbsb.", ".bbyybb.", "..brrb..", ".bbbbbb.", "bbybybbb", ".bbbbbb."]},
- heart:{name:"Heart",emoji:"❤️",rows:[".rrr.rrr", "rrrrrrrr", "rryrrrrr", "rryrrrrr", "rrrrrrrr", ".rrrrrr.", "..rrrr..", "...rr..."]},
- star:{name:"Star",emoji:"⭐",rows:["...yy...", "...yy...", "yyyyyyyy", ".yyyyyy.", "..yyyy..", ".yyyyyy.", ".yy..yy.", "yy....yy"]},
- fish:{name:"Fish",emoji:"🐟",rows:["..bbb...", ".bbbbb.y", "bbybbbyy", "bbbbbbby", ".bbbbb.y", "..bbb..."]},
- flower:{name:"Flower",emoji:"🌸",rows:["..r..r..", ".rrrrrr.", "rrryyrrr", "rrryyrrr", ".rrrrrr.", "..r..r..", "...gg...", ".gg..gg."]},
+ snowman:{name:"Snowman",emoji:"⛄",rows:["..pppp..", ".pppppp.", "..bbbb..", ".bpbbpb.", ".bboobb.", "..rrrr..", ".bbbkbb.", "bbbbkbbb", ".bbbbbb."]},
+ heart:{name:"Heart",emoji:"❤️",rows:[".rr..rr.", "rrrrrrrr", "rkrrrrrr", "rkrrrrrr", "rrrrrrrr", ".rrrrrr.", "..rrrr..", "...rr..."]},
+ star:{name:"Star",emoji:"⭐",rows:["...yy...", "..yooy..", "yyyooyyy", ".yyooyy.", "..yyyy..", ".yyyyyy.", ".yy..yy.", "yy....yy"]},
+ fish:{name:"Fish",emoji:"🐟",rows:["..ooo...", ".ooooo.t", "oobooott", "kooooott", ".ooooo.t", "..ooo..."]},
+ flower:{name:"Flower",emoji:"🌸",rows:["..k..k..", ".kkkkkk.", "kkkyykkk", "kkkyykkk", ".kkkkkk.", "..k..k..", "...gg...", ".gg..gg."]},
  rocket:{name:"Rocket",emoji:"🚀",rows:["...rr...", "..rrrr..", "..bbbb..", "..byyb..", "..bbbb..", ".rbbbbr.", "rr.yy.rr", "..yrry.."]},
- cat:{name:"Cat",emoji:"🐱",rows:["p.p..p.p", "pppppppp", "pppppppp", "pbpppbpp", "pppyyppp", ".pppppp.", "..pppp..", "...pp..."]}
+ cat:{name:"Cat",emoji:"🐱",rows:["o.o..o.o", "oooooooo", "oooooooo", "otooooto", "oookkooo", ".oooooo.", "..oooo..", "...oo..."]}
 };
 const SCHEDULE={"2026-10-12":"apple","2026-10-19":"leaf","2026-10-26":"pumpkin","2026-11-02":"corn","2026-11-09":"pie","2026-11-16":"yam","2026-11-23":"turkey",
  "2026-11-30":"gingerbread","2026-12-07":"tree","2026-12-14":"santa","2026-12-21":"reindeer","2026-12-28":"snowman"};
 const GENERIC=["heart","star","fish","flower","rocket","cat"];
-const DCOL={r:0,b:1,g:2,y:3,p:4,s:5};
+const DCOL={r:0,b:1,g:2,y:3,p:4,s:5,o:6,t:7,k:8};
+function designPal(key){const d=DESIGNS[key],cnt={};d.rows.forEach(r=>[...r].forEach(ch=>{if(DCOL[ch]!==undefined&&ch!=="s")cnt[DCOL[ch]]=(cnt[DCOL[ch]]||0)+1}));
+  const pal=Object.keys(cnt).map(Number).sort((a,b)=>cnt[b]-cnt[a]).slice(0,5);[0,1,2,3,4,6,7,8].forEach(c=>{if(pal.length<8&&!pal.includes(c))pal.push(c)});return pal}
 function designKeyFor(wk){if(SCHEDULE[wk])return SCHEDULE[wk];const n=Math.round((new Date(wk+"T12:00:00")-new Date("2026-12-28T12:00:00"))/(7*864e5));return GENERIC[((n%GENERIC.length)+GENERIC.length)%GENERIC.length]}
 function applyDesign(b,key){const d=DESIGNS[key],w=Math.max(...d.rows.map(r=>r.length)),ox=Math.floor((N-w)/2);let n=0;d.rows.forEach((row,i)=>[...row].forEach((ch,j)=>{if(DCOL[ch]!==undefined){b[i+1][j+ox]=DCOL[ch];n++}}));return n}
 function designTitle(key){const d=DESIGNS[key];return d.emoji+" "+d.name}
@@ -792,7 +794,7 @@ function startGame(mode,stage,tier,opts){
   else if(mode==="event"){const e=activeEvent()||EVENTS[0];cfg={kind:"event",ev:e.id,colors:5,hard:.5,bias:.5,...e.cfg};seedBase="ev-"+e.id}
   else cfg={kind:"classic",colors:4,stones:0,goalLines:0,goalPure:0,hard:0,bias:0};
   if(opts&&opts.seed)seedBase=opts.seed;
-  PAL=cfg.kind==="daily"?[0,1,2,3,4]:(cfg.kind==="stage"&&cfg.level<=3)?[0,1,2,3,4,6,7,8]:shufflePool("pal|"+(cfg.kind==="stage"?cfg.level:seedBase));
+  PAL=cfg.kind==="daily"?designPal(cfg.design):(cfg.kind==="stage"&&cfg.level<=3)?[0,1,2,3,4,6,7,8]:shufflePool("pal|"+(cfg.kind==="stage"?cfg.level:seedBase));
   N=cfg.size||8;CELL=640/N;
   G={mode,cfg,board:newBoard(),score:0,shown:0,best:+store(mode==="dash"?"hz_dbest_"+d:"hz_best_"+mode)||0,combo:0,bestCombo:0,pure:0,lines:0,placed:0,turn:0,pieces:[],drag:null,
      undo:null,undoUsed:false,date:d,over:false,won:false,overT:0,seedBase,lastScoreAnim:0};

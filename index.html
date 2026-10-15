@@ -96,6 +96,7 @@
     <button class="chip off" id="tCB">Color-blind symbols: off</button>
   </div>
   <div id="iosTip" style="display:none;max-width:320px;font-size:13px;font-weight:700;line-height:1.4;color:#ffe9a8;background:rgba(255,200,60,.12);border:1px solid rgba(255,226,122,.5);border-radius:14px;padding:8px 12px">Tip: tap Share, then Add to Home Screen, and play from the icon. Safari can erase saved progress from a web page!</div>
+  <div class="row"><button class="chip" id="bMis" style="border-color:#ffd96a;color:#ffe9a8">✨ Daily missions</button></div>
   <div class="row"><button class="chip" id="bHow">How to play</button><button class="chip" id="bSave">Save / restore progress</button></div>
 </div>
 
@@ -142,6 +143,16 @@
 
 <div class="screen" id="lvl">
   <div class="panel" style="text-align:center"><div id="lvlBody"></div></div>
+</div>
+
+<div class="screen" id="misScr">
+  <div class="panel" style="text-align:center">
+    <div class="lbl">Daily missions</div>
+    <div style="font-size:15px;font-weight:800;color:#ffd96a;margin:6px 0 12px" id="misSparks"></div>
+    <div id="misList" style="text-align:left"></div>
+    <div style="font-size:12px;opacity:.7;line-height:1.4;margin:10px 0 12px">Each mission = 10 ✨ sparks. Finish all 3 for +20 bonus. Sparks will buy block styles, board themes and music packs soon. New missions every day!</div>
+    <button class="chip" id="bMisBack">Back</button>
+  </div>
 </div>
 
 <div class="screen" id="catchScr">
@@ -503,6 +514,29 @@ function dashFinish(){const i=dashInfo(),d=G.date;let sk=i.streak,got=[],badge="
     if(badge){let b=[];try{b=JSON.parse(store("hz_badges")||"[]")}catch(e){}b.push(badge.slice(3)+" "+d);store("hz_badges",JSON.stringify(b))}}
   else sk=i.streak;
   return{got,badge,sk,first}}
+/* ============ daily missions: earn sparks for cosmetics ============ */
+const MPOOL=[
+ {k:"lines",f:r=>[12,16,20][Math.floor(r()*3)],t:n=>"Clear "+n+" lines"},
+ {k:"pure",f:r=>2+Math.floor(r()*2),t:n=>"Make "+n+" Pure clears"},
+ {k:"combo",f:()=>3,t:n=>"Reach a x"+n+" combo"},
+ {k:"pieces",f:()=>40,t:n=>"Place "+n+" pieces"},
+ {k:"wins",f:()=>2,t:n=>"Win 2 Journey levels"},
+ {k:"score",f:r=>[600,900][Math.floor(r()*2)],t:n=>"Score "+n+" in one game"}];
+function missionsFor(d){const rg=mulberry(hash("mis|"+d)),a=MPOOL.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rg()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+  const m=[{k:"dash",goal:1,t:"Finish today's Daily Dash"}];a.slice(0,2).forEach(q=>{const g=q.f(rg);m.push({k:q.k,goal:g,t:q.t(g)})});return m}
+function MP(){let o={};try{o=JSON.parse(store("hz_mp")||"{}")}catch(e){}if(o.d!==todayStr())o={d:todayStr(),c:[]};if(!o.c)o.c=[];return o}
+function sparks(){return+store("hz_sparks")||0}
+function mTick(k,v,isMax){const o=MP();o[k]=isMax?Math.max(o[k]||0,v):(o[k]||0)+v;mCheck(o)}
+function mCheck(o){const ms=missionsFor(o.d);let add=0;
+  ms.forEach((m,i)=>{if(!o.c.includes(i)&&(o[m.k]||0)>=m.goal){o.c.push(i);add+=10;toast("Mission complete! +10 ✨ · "+m.t)}});
+  if(add&&o.c.length===3&&!o.bonus){o.bonus=1;add+=20;setTimeout(()=>toast("All 3 missions done! +20 ✨ bonus"),2300)}
+  if(add){store("hz_sparks",String(sparks()+add))}
+  store("hz_mp",JSON.stringify(o))}
+function renderMis(){const o=MP(),ms=missionsFor(o.d);$("misSparks").textContent="✨ "+sparks()+" sparks · "+o.c.length+"/3 done today";
+  $("misList").innerHTML=ms.map((m,i)=>{const v=Math.min(o[m.k]||0,m.goal),done=o.c.includes(i);
+    return '<div style="margin:8px 0;font-weight:800;font-size:15px">'+(done?"✅ ":"⬜ ")+m.t+'<div style="height:10px;border-radius:6px;background:rgba(0,0,0,.35);margin-top:5px;overflow:hidden"><div style="height:100%;width:'+(100*v/m.goal)+'%;background:linear-gradient(90deg,#ff6a88,#ffc21a)"></div></div><div style="font-size:12px;opacity:.7;margin-top:2px">'+v+' / '+m.goal+'</div></div>'}).join("")}
+$("bMis").onclick=()=>{renderMis();hide("menu");show("misScr")};
+$("bMisBack").onclick=()=>{hide("misScr");show("menu");refreshMenu()};
 function startGame(mode,stage,tier){
   const d=mode==="daily"?weekStr():todayStr();let cfg,seedBase=Math.random().toString(36).slice(2);
   if(mode==="stage"){const L=stage||1,t=tier||0;cfg=levelCfg(L,t);const key=L+"-"+t,rt=(startGame.retry&&startGame.retry.key===key)?startGame.retry.r:0;seedBase="lv"+L+"t"+t+"r"+rt}
@@ -565,11 +599,12 @@ function applyPaint(i){const t=G.tgt;spendBoost("paint");
   t.sel.forEach(([r,c])=>{G.board[r][c]=i;const[cx,cy]=cellXY(r,c);burst(cx+CELL/2,cy+CELL/2,i,10,.9);sparkle(cx+CELL/2,cy+CELL/2,2,COLORS[i].light);ring(cx+CELL/2,cy+CELL/2,COLORS[i].light,170,.45,6);fx.cells.push({kind:"land",r,c,t:0,delay:0})});
   sfx.clear(2,1);vib([40,25,60]);floatText(LW/2,BY+300,"RECOLORED x"+t.sel.length,COLORS[i].light,52);G.undo=null;G.tgt=null;G.hint=null}
 function place(p,r0,c0){
-  G.undo=snapshot();
+  G.undo=snapshot();const ml=G.lines,mp=G.pure;
   p.s.cells.forEach(([i,j])=>{G.board[r0+i][c0+j]=p.color;const dl=Math.hypot(i-(p.s.h-1)/2,j-(p.s.w-1)/2)*.035;fx.cells.push({kind:"land",r:r0+i,c:c0+j,t:0,delay:dl})});
   p.used=true;G.placed++;G.score+=p.s.n;sfx.place(p.s.n);vib(26+p.s.n*4);fx.punch=Math.max(fx.punch,.012+.003*p.s.n);
   const cx=BX+(c0+p.s.w/2)*CELL,cy=BY+(r0+p.s.h/2)*CELL;burst(cx,cy,p.color,6+p.s.n,.5);sparkle(cx,cy,2+Math.floor(p.s.n/2),COLORS[p.color].light);ring(cx,cy,COLORS[p.color].light,120+30*p.s.n,.5,7);
   resolve();G.idle=0;G.hint=null;checkBest();
+  {const o=MP();o.pieces=(o.pieces||0)+1;o.lines=(o.lines||0)+Math.max(0,G.lines-ml);o.pure=(o.pure||0)+Math.max(0,G.pure-mp);o.combo=Math.max(o.combo||0,G.bestCombo);o.score=Math.max(o.score||0,G.score);mCheck(o)}
   if((G.cfg.kind==="stage"||G.cfg.kind==="daily")&&G.lines>=G.cfg.goalLines&&G.pure>=G.cfg.goalPure){G.over=true;G.won=true;G.overT=0;confetti();ring(LW/2,BY+320,"#ffd96a",800,1,14);
     [523,659,784,1047,1319].forEach((f,i)=>tone(f,.4,"triangle",.12,null,i*.09));floatText(LW/2,BY+300,"GOAL REACHED!","#ffd96a",70);setTimeout(()=>endGame(),1500);return}
   if(G.cfg.kind==="dash"&&G.placed>=G.cfg.pieces){G.over=true;G.overT=0;G.done=true;setTimeout(()=>endGame(),900);return}
@@ -631,12 +666,12 @@ function endGame(){
   G.best=best;let streakTxt="",info="",stars="",title="";let got=[];
   $("bNext").style.display="none";$("bAgain").textContent="PLAY AGAIN";
   if(m==="classic"){title=isBest?"New best!":"Game over";sfx.over()}
-  else if(m==="dash"){const r=dashFinish();got=r.got;sfx.pure();title=isBest?"New best today!":"Dash complete!";
+  else if(m==="dash"){const r=dashFinish();got=r.got;mTick("dash",1);sfx.pure();title=isBest?"New best today!":"Dash complete!";
     info=(G.done?"All "+c.pieces+" pieces placed":"No room left after "+G.placed+" pieces")+(r.first?"":"  ·  streak already counted today");
     streakTxt="🔥 "+r.sk+"-day streak"+(r.badge?"  ·  "+r.badge+"!":"");$("bAgain").textContent="TRY FOR A BETTER SCORE"}
   else{const goalTxt="Lines "+Math.min(G.lines,c.goalLines)+"/"+c.goalLines+(c.goalPure?"  ·  Pure "+Math.min(G.pure,c.goalPure)+"/"+c.goalPure:"");
     if(G.won){sfx.pure();const st=starsFor();G.stars=st;stars="★".repeat(st)+"☆".repeat(3-st);info="Solved with "+G.placed+" pieces";
-      if(m==="stage"){const L=c.level,t=c.tier,prev=lvStars(L,t);PROG[L]=PROG[L]||[0,0,0];PROG[L][t]=Math.max(prev,st);saveProg();
+      if(m==="stage"){const L=c.level,t=c.tier,prev=lvStars(L,t);PROG[L]=PROG[L]||[0,0,0];PROG[L][t]=Math.max(prev,st);saveProg();mTick("wins",1);
         got=levelRewards(L,t,prev===0,st,prev);title="Level "+L+" · "+TIERS[t].name+" cleared!";
         const nt=nextTarget(L,t);G.next=nt;const ok=nt.L<=MAXLV&&tierOpen(nt.L,nt.t);
         $("bNext").style.display=ok?"block":"none";$("bNext").textContent="NEXT: LEVEL "+nt.L+(nt.t?" "+TIERS[nt.t].name.toUpperCase():"");$("bAgain").textContent="REPLAY";
@@ -664,6 +699,7 @@ function shareText(){
 function refreshMenu(){const st=+store("hz_streak")||0,last=store("hz_last_daily"),t=weekStr(),att=+store("hz_att_"+t)||0;
   const dk=designKeyFor(weekStr());$("bDaily").firstChild.textContent="WEEKLY: "+DESIGNS[dk].emoji+" "+DESIGNS[dk].name.toUpperCase();
   $("dailySub").textContent=(last===t?"solved this week ✓":(att?att+" attempt"+(att>1?"s":"")+" this week":"very hard · new every Monday"))+(st?" · "+st+" wk streak":"");
+  {const mo=MP();$("bMis").textContent="✨ Daily missions "+mo.c.length+"/3 · "+sparks()+" sparks"}
   const di=dashInfo();$("bDash").firstChild.textContent="🔥 DAILY DASH"+(di.streak&&!di.dead?" · "+di.streak+" day"+(di.streak>1?"s":""):"");$("bDash").classList.toggle("pulse",!di.played);
   $("dashSub").textContent=di.played?"done today ✓ · best "+(+store("hz_dbest_"+di.d)||0).toLocaleString()+" · tap to beat it":(di.streak&&di.missed>=1&&di.missed<=3?"you missed "+di.missed+" day"+(di.missed>1?"s":"")+"! catch up and keep your streak":(di.streak&&!di.dead?"play today to keep your streak!":"15 pieces · same for everyone · new daily"));
   const firstTime=!store("hz_tut_done")&&totalStars()===0;$("bStage").classList.toggle("pulse",firstTime);

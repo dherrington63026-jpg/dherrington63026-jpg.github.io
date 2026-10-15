@@ -247,7 +247,9 @@ const COLORS=[
  {name:"teal",  light:"#9ffff0", base:"#12d6c0", dark:"#087a75", glow:"18,214,192", emoji:"🩵"},
  {name:"pink",  light:"#ffc0ea", base:"#ff6fc8", dark:"#a8267e", glow:"255,111,200", emoji:"🩷"},
  {name:"rainbow",light:"#ffffff",base:"#ff8ad8", dark:"#6a3dff", glow:"255,160,230", emoji:"🌈"},
- {name:"bomb",  light:"#ffb347", base:"#ff8a1f", dark:"#14141f", glow:"255,150,50", emoji:"💣"}
+ {name:"bomb",  light:"#ffb347", base:"#ff8a1f", dark:"#14141f", glow:"255,150,50", emoji:"💣"},
+ {name:"ice",   light:"#e6fbff", base:"#8fd8f0", dark:"#3a7ea0", glow:"140,220,255", emoji:"🧊"},
+ {name:"cracked",light:"#e6fbff",base:"#8fd8f0", dark:"#3a7ea0", glow:"140,220,255", emoji:"🧊"}
 ];
 const ORIG_COLORS=COLORS.map(c=>({...c}));
 const CIDX=[0,1,2,3,4,6,7,8];
@@ -305,7 +307,7 @@ function fits(b,s,r0,c0){for(const[i,j]of s.cells){const r=r0+i,c=c0+j;if(r<0||c
 function anyFit(b,s){for(let r=0;r<=N-s.h;r++)for(let c=0;c<=N-s.w;c++)if(fits(b,s,r,c))return true;return false}
 function fullLines(b){const rows=[],cols=[];for(let r=0;r<N;r++)if(b[r].every(v=>v!==null))rows.push(r);
   for(let c=0;c<N;c++){let ok=true;for(let r=0;r<N;r++)if(b[r][c]===null){ok=false;break}if(ok)cols.push(c)}return{rows,cols}}
-function simClear(b){const{rows,cols}=fullLines(b);rows.forEach(r=>{for(let c=0;c<N;c++)b[r][c]=null});cols.forEach(c=>{for(let r=0;r<N;r++)b[r][c]=null})}
+function simClear(b){const{rows,cols}=fullLines(b);const z=(r,c)=>{b[r][c]=b[r][c]===11?12:null};rows.forEach(r=>{for(let c=0;c<N;c++)z(r,c)});cols.forEach(c=>{for(let r=0;r<N;r++)z(r,c)})}
 function solvable(b,pcs){let budget=12000;
   function dfs(board,left){if(!left.length)return true;if(budget--<0)return true;
     for(let k=0;k<left.length;k++){const s=left[k];const rest=left.filter((_,i)=>i!==k);
@@ -513,13 +515,19 @@ function makeSpecialSprite(ci){
     c.fillStyle=gr;rrc(c,x,y,w,w,r);c.fill();c.lineWidth=S*.03;c.strokeStyle="rgba(255,255,255,.8)";rrc(c,x+S*.02,y+S*.02,w-S*.04,w-S*.04,r*.9);c.stroke();
     const cap=c.createLinearGradient(0,y,0,y+w*.55);cap.addColorStop(0,"rgba(255,255,255,.7)");cap.addColorStop(1,"rgba(255,255,255,0)");c.save();rrc(c,x,y,w,w,r);c.clip();c.fillStyle=cap;c.fillRect(x,y,w,w*.55);c.restore();
     c.fillStyle="#fff";c.shadowColor="rgba(0,0,0,.4)";c.shadowBlur=S*.05;c.beginPath();for(let i=0;i<8;i++){const a=-1.5708+i*.7854,q=i%2?w*.07:w*.26;c.lineTo(x+w/2+Math.cos(a)*q,y+w/2+Math.sin(a)*q)}c.closePath();c.fill()}
+  else if(ci>=11){const gr=c.createLinearGradient(x,y,x+w,y+w);gr.addColorStop(0,"#f4feff");gr.addColorStop(.5,"#a6e4f7");gr.addColorStop(1,"#5fb4d8");
+    c.save();c.shadowColor="rgba(140,220,255,1)";c.shadowBlur=S*.18;c.fillStyle=gr;rrc(c,x,y,w,w,r);c.fill();c.restore();c.fillStyle=gr;rrc(c,x,y,w,w,r);c.fill();
+    c.lineWidth=S*.03;c.strokeStyle="rgba(255,255,255,.9)";rrc(c,x+S*.02,y+S*.02,w-S*.04,w-S*.04,r*.9);c.stroke();
+    c.fillStyle="rgba(255,255,255,.55)";c.beginPath();c.moveTo(x+w*.15,y+w*.3);c.lineTo(x+w*.45,y+w*.12);c.lineTo(x+w*.55,y+w*.2);c.lineTo(x+w*.25,y+w*.42);c.closePath();c.fill();
+    c.fillStyle="rgba(255,255,255,.8)";c.beginPath();c.ellipse(x+w*.7,y+w*.25,w*.07,w*.035,-.6,0,6.3);c.fill();
+    if(ci===12){c.strokeStyle="rgba(40,100,140,.85)";c.lineWidth=S*.035;c.lineCap="round";c.lineJoin="round";c.beginPath();c.moveTo(x+w*.5,y+w*.08);c.lineTo(x+w*.42,y+w*.35);c.lineTo(x+w*.58,y+w*.5);c.lineTo(x+w*.4,y+w*.7);c.lineTo(x+w*.5,y+w*.93);c.moveTo(x+w*.58,y+w*.5);c.lineTo(x+w*.85,y+w*.55);c.stroke()}}
   else{let gr=c.createLinearGradient(0,y,0,y+w);gr.addColorStop(0,"#5a5a78");gr.addColorStop(1,"#1a1a28");c.fillStyle=gr;rrc(c,x,y,w,w,r);c.fill();c.lineWidth=S*.03;c.strokeStyle="#ff9a3a";rrc(c,x+S*.02,y+S*.02,w-S*.04,w-S*.04,r*.9);c.stroke();
     const bx=x+w*.46,by=y+w*.56,br=w*.28;const bg=c.createRadialGradient(bx-br*.3,by-br*.35,br*.1,bx,by,br);bg.addColorStop(0,"#8a8aa8");bg.addColorStop(.5,"#2a2a3c");bg.addColorStop(1,"#08080f");c.fillStyle=bg;c.beginPath();c.arc(bx,by,br,0,6.3);c.fill();
     c.fillStyle="rgba(255,255,255,.7)";c.beginPath();c.ellipse(bx-br*.38,by-br*.4,br*.18,br*.1,-.6,0,6.3);c.fill();
     c.strokeStyle="#c8a46a";c.lineWidth=S*.035;c.lineCap="round";c.beginPath();c.moveTo(bx+br*.5,by-br*.8);c.quadraticCurveTo(bx+br*.9,by-br*1.2,bx+br*1.05,by-br*1.05);c.stroke();
     c.save();c.shadowColor="#ffb347";c.shadowBlur=S*.12;c.fillStyle="#ffe27a";c.beginPath();for(let i=0;i<8;i++){const a=i*.7854,q=i%2?w*.04:w*.11;c.lineTo(bx+br*1.05+Math.cos(a)*q,by-br*1.05+Math.sin(a)*q)}c.closePath();c.fill();c.restore()}
   return{k,T}}
-function getSprite(ci){if(ci===9||ci===10){const key="s"+ci;return sprites[key]||(sprites[key]=makeSpecialSprite(ci))}const key=BST+ci;return sprites[key]||(sprites[key]=makeSpriteStyle(ci,BST))}
+function getSprite(ci){if(ci>=9){const key="s"+ci;return sprites[key]||(sprites[key]=makeSpecialSprite(ci))}const key=BST+ci;return sprites[key]||(sprites[key]=makeSpriteStyle(ci,BST))}
 function block(x,y,s,ci,alpha=1,glowPulse=0){
   const sp=getSprite(ci),e=s*PADF,sz=s+2*e;ctx.save();ctx.globalAlpha=alpha;ctx.drawImage(sp.k,x-e,y-e,sz,sz);
   if(glowPulse>0){ctx.globalAlpha=alpha*glowPulse*.7;ctx.fillStyle="#fff";rr(x+s*.05,y+s*.05,s*.9,s*.9,s*.24);ctx.fill()}
@@ -563,7 +571,7 @@ function designKeyFor(wk){if(SCHEDULE[wk])return SCHEDULE[wk];const n=Math.round
 function applyDesign(b,key){const d=DESIGNS[key],w=Math.max(...d.rows.map(r=>r.length)),ox=Math.floor((N-w)/2);let n=0;d.rows.forEach((row,i)=>[...row].forEach((ch,j)=>{if(DCOL[ch]!==undefined){b[i+1][j+ox]=DCOL[ch];n++}}));return n}
 function designTitle(key){const d=DESIGNS[key];return d.emoji+" "+d.name}
 function stageCfg(n){
-  return{kind:"stage",n,colors:n<=1?1:n<=4?2:n<=8?3:n<=14?4:n<50?5:n<100?6:n<200?7:8,rainbow:n<8?0:Math.min(1+Math.floor((n-8)/6),3),bombs:n<12?0:Math.min(1+Math.floor((n-12)/8),2),stones:n<5?0:Math.min(2+Math.floor((n-5)*.4),6),
+  return{kind:"stage",n,colors:n<=1?1:n<=4?2:n<=8?3:n<=14?4:n<50?5:n<100?6:n<200?7:8,rainbow:n<8?0:Math.min(1+Math.floor((n-8)/6),3),bombs:n<12?0:Math.min(1+Math.floor((n-12)/8),2),ice:n<18?0:Math.min(1+Math.floor((n-18)/8),3),stones:n<5?0:Math.min(2+Math.floor((n-5)*.4),6),
     goalLines:Math.min(2+Math.floor((n-1)*.4),20),goalPure:n<2?0:Math.min(1+Math.floor((n-2)/8),2),hard:Math.min(.5,Math.max(0,(n-6)/40)),bias:Math.max(.3,.9-n*.04)}}
 function dailyCfg(d){const rg=mulberry(hash("cfg|"+d));
   return{kind:"daily",colors:5,stones:0,size:10,design:designKeyFor(d),goalLines:10+Math.floor(rg()*3),goalPure:1,hard:.7,bias:.35}}
@@ -571,7 +579,7 @@ function prefillBoard(b,cfg,seed){const rg=mulberry(hash(seed));let n=cfg.stones
   const rowC=Array(N).fill(0),colC=Array(N).fill(0);
   while(n>0&&guard++<600){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]!==null||rowC[r]>=3||colC[c]>=3)continue;
     b[r][c]=5;rowC[r]++;colC[c]++;n--}
-  const sp=[];for(let i=0;i<(cfg.rainbow||0);i++)sp.push(9);for(let i=0;i<(cfg.bombs||0);i++)sp.push(10);guard=0;
+  const sp=[];for(let i=0;i<(cfg.rainbow||0);i++)sp.push(9);for(let i=0;i<(cfg.bombs||0);i++)sp.push(10);for(let i=0;i<(cfg.ice||0);i++)sp.push(11);guard=0;
   while(sp.length&&guard++<800){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]!==null||rowC[r]>=3||colC[c]>=3)continue;b[r][c]=sp.pop();rowC[r]++;colC[c]++}}
 /* ============ Journey map: levels with Easy / Medium / Hard ============ */
 const MAXLV=60,TIERS=[{k:"easy",name:"Easy",col:"#2fd27a"},{k:"medium",name:"Medium",col:"#ffc21a"},{k:"hard",name:"Hard",col:"#ff3d5a"}];
@@ -584,7 +592,7 @@ function totalStars(){let n=0;for(const L in PROG)PROG[L].forEach(v=>n+=v||0);re
 function maxLevel(){let L=1;while(L<MAXLV&&lvStars(L,0)>0)L++;return L}
 function tierOpen(L,t){return L<=maxLevel()&&(t===0||lvStars(L,t-1)>0)}
 function levelCfg(L,t){const idx=t===0?Math.max(1,L-1):t===1?L+1:L+4,c=stageCfg(idx);c.level=L;c.tier=t;c.idx=idx;c.n=L;
-  if(t===0){c.goalLines=Math.max(2,c.goalLines-1);c.goalPure=Math.max(0,c.goalPure-1);c.bias=Math.min(.95,c.bias+.12);c.stones=Math.max(0,c.stones-2);c.bombs=Math.max(0,c.bombs-1)}
+  if(t===0){c.goalLines=Math.max(2,c.goalLines-1);c.goalPure=Math.max(0,c.goalPure-1);c.bias=Math.min(.95,c.bias+.12);c.stones=Math.max(0,c.stones-2);c.bombs=Math.max(0,c.bombs-1);c.ice=Math.max(0,c.ice-1)}
   if(t===2){c.goalLines=Math.min(24,c.goalLines+2);c.goalPure=Math.min(3,c.goalPure+1);c.bias=c.bias*.75;c.stones=Math.min(7,c.stones+1)}
   return c}
 // Booster rewards are small and only for FIRST clears, so players run out and may choose to buy more later
@@ -751,7 +759,7 @@ function startGame(mode,stage,tier,opts){
   G={mode,cfg,board:newBoard(),score:0,shown:0,best:+store(mode==="dash"?"hz_dbest_"+d:"hz_best_"+mode)||0,combo:0,bestCombo:0,pure:0,lines:0,placed:0,turn:0,pieces:[],drag:null,
      undo:null,undoUsed:false,date:d,over:false,won:false,overT:0,seedBase,lastScoreAnim:0};
   G.chal=(opts&&opts.chal)||null;
-  if(cfg.stones||cfg.rainbow||cfg.bombs)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
+  if(cfg.stones||cfg.rainbow||cfg.bombs||cfg.ice)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
   if(cfg.design){applyDesign(G.board,cfg.design);G.pre=copyBoard(G.board)}
   G.startFill=G.board.flat().filter(v=>v!==null).length;G.mstyle=pickStyle();
   if(mode==="stage"&&cfg.level===1&&cfg.tier===0&&!store("hz_tut_done"))G.tut={step:0,hk:-1,hint:null,t:0};
@@ -830,9 +838,9 @@ function resolve(){
   const{rows,cols}=fullLines(G.board);const nLines=rows.length+cols.length;
   if(!nLines){G.combo=0;return}
   const lines=[];rows.forEach(r=>lines.push({cells:Array.from({length:N},(_,c)=>[r,c])}));cols.forEach(c=>lines.push({cells:Array.from({length:N},(_,r)=>[r,c])}));
-  const kill=new Map(),B=G.board;let pts=0,pureN=0;
+  const kill=new Map(),crack=new Set(),B=G.board;let pts=0,pureN=0;
   lines.forEach(L=>{const vals=L.cells.map(([r,c])=>B[r][c]),col=lineCol(vals);L.pure=vals.every(v=>v===col||isWild(v));L.col=col;
-    L.cells.forEach(([r,c])=>kill.set(r*N+c,{r,c,col:B[r][c],pure:L.pure}));pts+=L.pure?N*30:N*10;if(L.pure)pureN++});
+    L.cells.forEach(([r,c])=>{if(B[r][c]===11){crack.add(r*N+c);return}kill.set(r*N+c,{r,c,col:B[r][c],pure:L.pure})});pts+=L.pure?N*30:N*10;if(L.pure)pureN++});
   // bombs: a bomb in a clearing line explodes the 3x3 around it
   let bombN=0;{const bq=[...kill.values()].filter(k=>k.col===10);
     while(bq.length){const k=bq.pop(),[bx,by]=cellXY(k.r,k.c);ring(bx+CELL/2,by+CELL/2,"#ffb347",300,.6,10);
@@ -843,6 +851,7 @@ function resolve(){
   lines.filter(L=>L.pure).forEach(L=>{const q=[...L.cells],seen=new Set(L.cells.map(([r,c])=>r*N+c));
     while(q.length){const[r,c]=q.pop();[[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc,k=nr*N+nc;
       if(nr<0||nc<0||nr>=N||nc>=N||seen.has(k))return;seen.add(k);if(B[nr][nc]===L.col||isWild(B[nr][nc])){q.push([nr,nc]);if(!kill.has(k)){kill.set(k,{r:nr,c:nc,col:L.col,pure:true,blob:true});blobN++}}})}});
+  crack.forEach(k=>{if(kill.has(k)){crack.delete(k);return}const r=Math.floor(k/N),c=k%N,[x,y]=cellXY(r,c);B[r][c]=12;burst(x+CELL/2,y+CELL/2,11,12,.9);ring(x+CELL/2,y+CELL/2,"#bff0ff",220,.5,6);fx.cells.push({kind:"land",r,c,t:0,delay:0})});
   G.combo++;G.bestCombo=Math.max(G.bestCombo,G.combo);
   const mult=Math.min(1+.5*(G.combo-1),4);
   pts=(pts*(1+.5*(nLines-1))+blobN*20+bombN*15)*mult;pts=Math.round(pts);
@@ -927,6 +936,7 @@ function tipFor(c){
   if(c.kind==="daily")return"Smash the "+DESIGNS[c.design].name.toLowerCase()+"! The picture is made of colored blocks. Fill lines to clear it, and make PURE lines to blow up touching blocks of the same color. Same puzzle for everyone, all week.";
   const ix=c.idx||c.n;
   if(c.rainbow&&ix>=8&&ix<=9)return"New: RAINBOW blocks! A rainbow block counts as ANY color, so it never ruins a Pure line. Use it to finish lines!";
+  if(c.ice&&ix>=18&&ix<=19)return"New: ICE blocks! A line through ice only cracks it. Clear a second line through it to break it for good. Ice stops Pure lines until it is gone.";
   if(c.bombs&&ix>=12&&ix<=13)return"New: BOMBS! When a line with a bomb clears, it explodes and breaks every block around it.";
   if(ix===1)return"Drag shapes onto the grid. Fill a whole row or column to clear it. Everything is one color here, so every line is a PURE clear! Use as few pieces as you can to earn 3 stars.";
   if(ix===2)return"Now there are two colors. Fill a line with just ONE color to make a PURE clear: 3x points and it blows up touching blocks of that color!";
@@ -945,7 +955,7 @@ function showIntro(){if(skipIntro){skipIntro=false;return}
   $("inKind").textContent=c.kind==="daily"?"Weekly · "+designTitle(c.design)+" week · "+weekLabel(G.date):"Level "+c.level+" · "+TIERS[c.tier].name;
   $("inGoal").textContent=goalText(c);
   $("inChips").innerHTML=(c.goalPure?'<span class="chip" style="cursor:default;color:#ffd96a;border-color:#ffd96a">★ '+c.goalPure+' PURE clear'+(c.goalPure>1?"s":"")+' needed</span> ':"")+
-    (c.stones?'<span class="chip" style="cursor:default">'+c.stones+' stones</span> ':"")+(c.rainbow?'<span class="chip" style="cursor:default">'+c.rainbow+' 🌈 rainbow</span> ':"")+(c.bombs?'<span class="chip" style="cursor:default">'+c.bombs+' 💣 bomb'+(c.bombs>1?'s':'')+'</span> ':"")+(c.design?'<span class="chip" style="cursor:default">'+DESIGNS[c.design].emoji+' picture board</span> ':"")+'<span class="chip" style="cursor:default">'+c.colors+' color'+(c.colors>1?"s":"")+'</span>';
+    (c.stones?'<span class="chip" style="cursor:default">'+c.stones+' stones</span> ':"")+(c.rainbow?'<span class="chip" style="cursor:default">'+c.rainbow+' 🌈 rainbow</span> ':"")+(c.bombs?'<span class="chip" style="cursor:default">'+c.bombs+' 💣 bomb'+(c.bombs>1?'s':'')+'</span> ':"")+(c.ice?'<span class="chip" style="cursor:default">'+c.ice+' 🧊 ice</span> ':"")+(c.design?'<span class="chip" style="cursor:default">'+DESIGNS[c.design].emoji+' picture board</span> ':"")+'<span class="chip" style="cursor:default">'+c.colors+' color'+(c.colors>1?"s":"")+'</span>';
   $("inTip").textContent=tipFor(c);
   const pr=parFor(c);$("inStars").innerHTML="★★★ finish in "+pr+" pieces or fewer<br>★★ in "+Math.floor(pr*1.5)+" or fewer · ★ any time<br><span style=\"font-weight:600;opacity:.75;font-size:13px\">Fewer pieces = more stars. Stars earn you boosters!</span>";
   $("inExtra").textContent=c.kind==="daily"?"A new puzzle every Monday. Solve it to keep your weekly streak.":(c.goalPure?"Pure clears count toward your line total too.":"");
@@ -1135,7 +1145,7 @@ function previewInfo(){ // ghost + completing lines
   cols.forEach(c=>{const a=[];for(let r=0;r<N;r++)a.push(b[r][c]);lines.push({row:false,i:c,pure:isPureArr(a)})});
   return{t,p,lines}}
 function lineCues(){const B=G.board,cues=[];
-  const check=(arr,isRow,i)=>{let col=-1,k=0;for(const v of arr){if(v===null)continue;if(v===5)return;if(isWild(v)){k++;continue}if(col===-1)col=v;else if(v!==col)return;k++}
+  const check=(arr,isRow,i)=>{let col=-1,k=0;for(const v of arr){if(v===null)continue;if(v===5||v>=11)return;if(isWild(v)){k++;continue}if(col===-1)col=v;else if(v!==col)return;k++}
     if(col===-1)return;
     if(G.pre){let own=false;for(let j=0;j<N;j++){const rr_=isRow?i:j,cc_=isRow?j:i;if(B[rr_][cc_]!==null&&G.pre[rr_][cc_]!==B[rr_][cc_])own=true}if(!own)return}
     if(k>=2&&k<N)cues.push({isRow,i,col,k})};

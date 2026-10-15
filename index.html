@@ -157,9 +157,10 @@
 
 <div class="screen" id="shopScr">
   <div class="panel" style="text-align:center;max-height:90vh;overflow:auto">
-    <div class="lbl">Shop · block styles</div>
+    <div class="lbl">Shop</div>
+    <div class="row" style="margin:6px 0"><button class="chip" id="tabStyles">Block styles</button><button class="chip" id="tabThemes">Board themes</button></div>
     <div style="font-size:18px;font-weight:900;color:#ffd96a;margin:6px 0 4px" id="shopSparks"></div>
-    <div style="font-size:12px;opacity:.7;margin-bottom:8px">Earn ✨ sparks from daily missions. Board themes and music packs are coming next!</div>
+    <div style="font-size:12px;opacity:.7;margin-bottom:8px">Earn ✨ sparks from daily missions. Music packs are coming next!</div>
     <div id="shopList"></div>
     <button class="chip" id="bShopBack" style="margin-top:8px">Back</button>
   </div>
@@ -575,20 +576,28 @@ function renderMis(){const o=MP(),ms=missionsFor(o.d);$("misSparks").textContent
 const STYLES=[{id:"gem",name:"Glossy Gem",price:0},{id:"candy",name:"Candy",price:100},{id:"neon",name:"Neon",price:150},{id:"pixel",name:"Pixel",price:200},{id:"jelly",name:"Jelly",price:300}];
 function owned(){let o=[];try{o=JSON.parse(store("hz_own")||"[]")}catch(e){}return o}
 function isOwned(id){return id==="gem"||owned().includes(id)}
-let shopArm=null;
+let shopArm=null,shopTab="styles";
 function renderShop(){$("shopSparks").textContent="✨ "+sparks()+" sparks";const el=$("shopList");el.innerHTML="";
-  STYLES.forEach(it=>{const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid "+(BST===it.id?"#ffd96a":"var(--edge)");
-    const cv2=document.createElement("canvas");cv2.width=240;cv2.height=60;cv2.style.cssText="position:static;left:auto;right:auto;top:auto;bottom:auto;width:120px;height:30px;flex:none;touch-action:auto";const c2=cv2.getContext("2d");
-    for(let i=0;i<4;i++){const sp=makeSpriteStyle(i,it.id),sz=44,e=sz*PADF,t=sz+2*e;c2.drawImage(sp.k,8+i*58-e,8-e,t,t)}
+  $("tabStyles").classList.toggle("off",shopTab!=="styles");$("tabThemes").classList.toggle("off",shopTab!=="themes");
+  const items=shopTab==="styles"?STYLES:THEMES,cur=shopTab==="styles"?BST:BTH;
+  items.forEach(it=>{const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid "+(cur===it.id?"#ffd96a":"var(--edge)");
+    const cv2=document.createElement("canvas");cv2.width=240;cv2.height=60;cv2.style.cssText="position:static;left:auto;right:auto;top:auto;bottom:auto;width:120px;height:30px;flex:none;touch-action:auto;border-radius:8px";const c2=cv2.getContext("2d");
+    if(shopTab==="styles"){for(let i=0;i<4;i++){const sp=makeSpriteStyle(i,it.id),sz=44,e=sz*PADF,t=sz+2*e;c2.drawImage(sp.k,8+i*58-e,8-e,t,t)}}
+    else{const g=c2.createLinearGradient(0,0,240,60);g.addColorStop(0,it.bg[0]);g.addColorStop(.6,it.bg[1]);g.addColorStop(1,it.bg[2]);c2.fillStyle=g;c2.fillRect(0,0,240,60);
+      const oc=it.orbs||["120,80,255","255,120,160","80,200,255"];oc.forEach((o,i)=>{const rg=c2.createRadialGradient(40+i*80,30,0,40+i*80,30,60);rg.addColorStop(0,"rgba("+o+",.55)");rg.addColorStop(1,"rgba("+o+",0)");c2.fillStyle=rg;c2.fillRect(0,0,240,60)});
+      for(let i=0;i<14;i++){c2.fillStyle="rgba("+it.star+",.8)";c2.beginPath();c2.arc((i*37)%240,(i*23)%60,1.5*it.big,0,6.3);c2.fill()}}
     const nm=document.createElement("div");nm.style.cssText="flex:1;text-align:left;font-weight:800;font-size:14px";nm.textContent=it.name;
     const b=document.createElement("button");b.className="chip";b.style.cssText="flex:none;min-width:92px;padding:8px 10px";
-    const own=isOwned(it.id);b.textContent=BST===it.id?"✓ Equipped":own?"Equip":(shopArm===it.id?"Tap to buy":"✨ "+it.price);
+    const own=isOwned(it.id)||it.price===0;b.textContent=cur===it.id?"✓ Equipped":own?"Equip":(shopArm===it.id?"Tap to buy":"✨ "+it.price);
     if(!own&&sparks()<it.price)b.style.opacity=".5";
-    b.onclick=()=>{if(own){BST=it.id;store("hz_bstyle",BST);shopArm=null;renderShop();return}
+    const equip=()=>{if(shopTab==="styles"){BST=it.id;store("hz_bstyle",BST)}else{BTH=it.id;store("hz_bth",BTH)}};
+    b.onclick=()=>{if(own){equip();shopArm=null;renderShop();return}
       if(sparks()<it.price){toast("You need "+(it.price-sparks())+" more ✨ sparks. Finish daily missions!");return}
       if(shopArm!==it.id){shopArm=it.id;renderShop();return}
-      store("hz_sparks",String(sparks()-it.price));const o=owned();o.push(it.id);store("hz_own",JSON.stringify(o));BST=it.id;store("hz_bstyle",BST);shopArm=null;toast("Unlocked "+it.name+"!");sfx.pure();renderShop()};
+      store("hz_sparks",String(sparks()-it.price));const o=owned();o.push(it.id);store("hz_own",JSON.stringify(o));equip();shopArm=null;toast("Unlocked "+it.name+"!");sfx.pure();renderShop()};
     row.append(cv2,nm,b);el.appendChild(row)})}
+$("tabStyles").onclick=()=>{shopTab="styles";shopArm=null;renderShop()};
+$("tabThemes").onclick=()=>{shopTab="themes";shopArm=null;renderShop()};
 $("bShop").onclick=()=>{shopArm=null;renderShop();hide("menu");show("shopScr")};
 $("bShopBack").onclick=()=>{hide("shopScr");show("menu");refreshMenu()};
 $("bMis").onclick=()=>{renderMis();hide("menu");show("misScr")};
@@ -933,19 +942,27 @@ function update(dt){bgT+=dt;
         const e=Math.min(1,d.t/.1),ee=1-Math.pow(1-e,3);p.x=lerp(d.sx0,tx,ee);p.y=lerp(d.sy0,ty,ee);p.sc=lerp(p.sc,1,1-Math.pow(.00001,dt));
         const key=tg?tg.r0+","+tg.c0:"";if(key&&key!==d.key){sfx.tick();vib(18)}d.key=key}
       else{const[tx,ty]=slotCenter(p.slot);p.x=lerp(p.x,tx,1-Math.pow(.0002,dt));p.y=lerp(p.y,ty,1-Math.pow(.0002,dt));p.sc=lerp(p.sc,TRAY_CELL/CELL,1-Math.pow(.0005,dt))}})}}
-function background(){
-  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,"#1a1050");g.addColorStop(.5,"#0f0a35");g.addColorStop(1,"#080520");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+const THEMES=[
+ {id:"space",name:"Starry Night",price:0,bg:["#1a1050","#0f0a35","#080520"],orbs:null,star:"255,255,255",drift:0,big:1,panel:"10,6,40"},
+ {id:"sunset",name:"Sunset",price:100,bg:["#4a1458","#2a0d3d","#120626"],orbs:["255,120,90","255,190,80","255,90,150"],star:"255,230,190",drift:0,big:1,panel:"40,10,40"},
+ {id:"ocean",name:"Deep Ocean",price:150,bg:["#06456b","#04304e","#021a30"],orbs:["60,200,230","40,120,255","80,230,200"],star:"200,245,255",drift:-.03,big:1.6,panel:"3,24,44"},
+ {id:"forest",name:"Forest Glow",price:200,bg:["#0f3a24","#0a2a1a","#05150d"],orbs:["80,220,120","200,240,90","60,180,150"],star:"230,255,150",drift:.008,big:1.7,panel:"5,28,16"},
+ {id:"snow",name:"Snowfall",price:300,bg:["#27457a","#1a2f5c","#0c1a3a"],orbs:["170,210,255","220,235,255","140,180,255"],star:"255,255,255",drift:.06,big:1.8,panel:"12,22,52"}];
+let BTH=store("hz_bth")||"space";
+function TH(){return THEMES.find(t=>t.id===BTH)||THEMES[0]}
+function background(){const th=TH();
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,th.bg[0]);g.addColorStop(.5,th.bg[1]);g.addColorStop(1,th.bg[2]);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
   ctx.globalCompositeOperation="lighter";
   orbs.forEach(o=>{const x=(o.x+Math.sin(bgT*o.s+o.p)*.25)*W,y=(o.y+Math.cos(bgT*o.s*.8+o.p)*.2)*H,r=o.r*Math.max(W,H)*.7;
-    const rg=ctx.createRadialGradient(x,y,0,x,y,r);rg.addColorStop(0,"rgba("+o.c+",.20)");rg.addColorStop(1,"rgba("+o.c+",0)");ctx.fillStyle=rg;ctx.fillRect(0,0,W,H)});
-  stars.forEach(s=>{const a=.35+.65*Math.abs(Math.sin(bgT*s.s+s.p));ctx.fillStyle="rgba(255,255,255,"+a*.7+")";ctx.beginPath();ctx.arc(s.x*W,s.y*H,s.r,0,6.3);ctx.fill()});
+    const rg=ctx.createRadialGradient(x,y,0,x,y,r);const oc=th.orbs?th.orbs[orbs.indexOf(o)%th.orbs.length]:o.c;rg.addColorStop(0,"rgba("+oc+",.20)");rg.addColorStop(1,"rgba("+oc+",0)");ctx.fillStyle=rg;ctx.fillRect(0,0,W,H)});
+  stars.forEach(s=>{const a=.35+.65*Math.abs(Math.sin(bgT*s.s+s.p));ctx.fillStyle="rgba("+th.star+","+a*.7+")";const sy=th.drift?(((s.y+th.drift*s.s*bgT)%1)+1)%1:s.y;ctx.beginPath();ctx.arc(s.x*W,sy*H,s.r*th.big,0,6.3);ctx.fill()});
   ctx.globalCompositeOperation="source-over";
   if(fx.flash>0){ctx.fillStyle="rgba("+fx.flashCol+","+fx.flash*.35+")";ctx.fillRect(0,0,W,H)}}
 function boardPanel(){
   ctx.save();ctx.shadowColor="rgba(0,0,0,.55)";ctx.shadowBlur=40;ctx.shadowOffsetY=14;
   const pg=ctx.createLinearGradient(0,BY-20,0,BY+N*CELL+20);pg.addColorStop(0,"rgba(255,255,255,.14)");pg.addColorStop(1,"rgba(255,255,255,.05)");
-  ctx.fillStyle="rgba(10,6,40,.72)";rr(BX-18,BY-18,N*CELL+36,N*CELL+36,36);ctx.fill();ctx.restore();
-  ctx.fillStyle="rgba(10,6,40,.72)";rr(BX-18,BY-18,N*CELL+36,N*CELL+36,36);ctx.fill();
+  const pc="rgba("+TH().panel+",.72)";ctx.fillStyle=pc;rr(BX-18,BY-18,N*CELL+36,N*CELL+36,36);ctx.fill();ctx.restore();
+  ctx.fillStyle=pc;rr(BX-18,BY-18,N*CELL+36,N*CELL+36,36);ctx.fill();
   ctx.lineWidth=3;const eg=ctx.createLinearGradient(BX,BY,BX+N*CELL,BY+N*CELL);eg.addColorStop(0,"rgba(255,255,255,.5)");eg.addColorStop(.5,"rgba(255,255,255,.08)");eg.addColorStop(1,"rgba(255,255,255,.35)");
   ctx.strokeStyle=eg;rr(BX-18,BY-18,N*CELL+36,N*CELL+36,36);ctx.stroke();
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){const[x,y]=cellXY(r,c);const alt=(r+c)%2;ctx.fillStyle=alt?"rgba(255,255,255,.075)":"rgba(255,255,255,.115)";rr(x+4,y+4,CELL-8,CELL-8,14);ctx.fill();

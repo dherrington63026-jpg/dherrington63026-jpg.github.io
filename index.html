@@ -38,6 +38,8 @@
   .pips{display:flex;gap:4px;position:absolute;bottom:-20px}
   .pips i{width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.55)}
   .pips i.on.e{background:#2fd27a}.pips i.on.m{background:#ffc21a}.pips i.on.h{background:#ff3d5a}
+  .wbanner{position:absolute;left:5%;right:5%;text-align:center;padding:10px 12px;border-radius:18px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.28);font-weight:900;font-size:17px;letter-spacing:.04em}
+  .wbanner small{display:block;opacity:.8;font-weight:700;font-size:12px;letter-spacing:0;margin-top:2px}
   .world{position:absolute;left:0;right:0;text-align:center;font-weight:900;letter-spacing:.3em;opacity:.5;font-size:15px;transform:translateY(-50%)}
   .tierbtn{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;gap:10px;padding:14px 16px;margin-bottom:10px;border-radius:18px;border:2px solid;background:rgba(255,255,255,.07);color:#fff;font-family:inherit;cursor:pointer}
   .tierbtn b{font-size:21px;display:block}
@@ -150,7 +152,7 @@
 </div>
 
 <div class="screen" id="map">
-  <div class="mapTop"><button class="chip" id="mapBack">← Menu</button><div class="mapTitle">JOURNEY</div><div class="starpill" id="mapStars">★ 0</div></div>
+  <div class="mapTop"><button class="chip" id="mapBack">← Menu</button><div style="text-align:center"><div class="mapTitle">JOURNEY</div><button class="chip" id="mapScene" style="font-size:11px;padding:3px 10px;margin-top:2px">🎨 World scenery: on</button></div><div class="starpill" id="mapStars">★ 0</div></div>
   <div id="mapScroll"><div id="mapInner"></div></div>
 </div>
 
@@ -726,32 +728,77 @@ function stageCfg(n){
     goalLines:Math.min(2+Math.floor((n-1)*.4),20),goalPure:n<2?0:Math.min(1+Math.floor((n-2)/8),2),hard:Math.min(.5,Math.max(0,(n-6)/40)),bias:Math.max(.3,.9-n*.04)}}
 function dailyCfg(d){const rg=mulberry(hash("cfg|"+d));
   return{kind:"daily",colors:5,stones:0,size:10,design:designKeyFor(d),goalLines:10+Math.floor(rg()*3),goalPure:1,hard:.7,bias:.35}}
+const PMASKS=[
+ ["##....##","#......#","........","........","........","........","#......#","##....##"],
+ ["#.#.#.#.","........","#.#.#.#.","........","#.#.#.#.","........","#.#.#.#.","........"],
+ ["..####..","........","........","........","........","........","........","..####.."],
+ ["#.......",".#......","..#.....","...#....","....#...",".....#..","......#.",".......#"],
+ ["........","........","..####..","..#..#..","..#..#..","..####..","........","........"],
+ [".######.","........","........","........","........",".######.","........","........"],
+ ["#.......","##......","###.....","........","........",".....###","......##",".......#"],
+ ["..#..#..","..#..#..","........","........","........","........","..#..#..","..#..#.."],
+ ["...##...","..#..#..",".#....#.","........","........","........","........","........"],
+ ["##..##..","##..##..","........","........","........","........","..##..##","..##..##"],
+ ["#.....#.",".#...#..","........","........","........","........",".#...#..","#.....#."],
+ ["........","...#....","..###...","...#....","........","....#...","...###..","....#..."]];
+function patternCells(key){const h=hash(key);let cells=[];PMASKS[h%PMASKS.length].forEach((row,r)=>[...row].forEach((ch,c)=>{if(ch==="#")cells.push([r,c])}));
+  const tr=(h>>>5)%8;return cells.map(([r,c])=>{let rr=r,cc=c;for(let k=0;k<tr%4;k++){const t=rr;rr=cc;cc=7-t}if(tr>=4)cc=7-cc;return[rr,cc]})}
 function prefillBoard(b,cfg,seed){const rg=mulberry(hash(seed));let n=cfg.stones,guard=0;
   const rowC=Array(N).fill(0),colC=Array(N).fill(0);
+  if(cfg.patt){const cs=patternCells("pat|"+seed).slice(0,cfg.patt==="color"||cfg.patt==="mix"?99:10),pal=PAL,nc=Math.max(1,Math.min(cfg.colors||1,pal.length)),pc=pal[hash("pc|"+seed)%nc];cs.forEach(([r,c],i)=>{if(r>=N||c>=N||b[r][c]!==null)return;b[r][c]=cfg.patt==="ice"?11:cfg.patt==="stone"?5:cfg.patt==="color"?pc:[11,5,pal[0],pal[nc>1?1:0]][i%4];rowC[r]++;colC[c]++})}
+  if(cfg.seedBlocks){const nc=Math.max(1,Math.min(cfg.colors||1,PAL.length));for(let k=0;k<cfg.seedBlocks;k++){for(let g=0;g<40;g++){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]===null){b[r][c]=PAL[Math.floor(rg()*nc)];break}}}}
   while(n>0&&guard++<600){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]!==null||rowC[r]>=3||colC[c]>=3)continue;
     b[r][c]=5;rowC[r]++;colC[c]++;n--}
   const sp=[];for(let i=0;i<(cfg.rainbow||0);i++)sp.push(9);for(let i=0;i<(cfg.bombs||0);i++)sp.push(10);for(let i=0;i<(cfg.ice||0);i++)sp.push(11);guard=0;
   while(sp.length&&guard++<800){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]!==null||rowC[r]>=3||colC[c]>=3)continue;b[r][c]=sp.pop();rowC[r]++;colC[c]++}}
 /* ============ Journey map: levels with Easy / Medium / Hard ============ */
-const MAXLV=60,TIERS=[{k:"easy",name:"Easy",col:"#2fd27a"},{k:"medium",name:"Medium",col:"#ffc21a"},{k:"hard",name:"Hard",col:"#ff3d5a"}];
+const TIERS=[{k:"easy",name:"Easy",col:"#2fd27a"},{k:"medium",name:"Medium",col:"#ffc21a"},{k:"hard",name:"Hard",col:"#ff3d5a"}];
+/* ===== Journey worlds: 6 worlds x 50 levels. Each opens in its own season (works offline, no app update needed) ===== */
+const WORLDS=[
+ {id:1,name:"Sunny Meadow",emoji:"🌸",theme:"th_spring",from:1,to:50,open:"2000-01-01",season:"Always open",base:0,rule:"Learn the basics. New block types appear as you go.",tip:"Welcome to the Sunny Meadow! Learn the basics here. New kinds of blocks appear as you climb.",rew:{sp:150,bo:3},bg:["#3a7a8a","#8ad4c8"]},
+ {id:2,name:"Frozen Peaks",emoji:"❄️",theme:"snow",from:51,to:100,open:"2026-12-14",season:"Winter",base:14,rule:"Ice walls guard the board. Crack them with lines.",tip:"Welcome to the Frozen Peaks! Ice walls guard the board. Clear a line through ice to crack it, then again to break it.",rew:{sp:150,bo:3},bg:["#27457a","#9ec0ff"]},
+ {id:3,name:"Candy Kingdom",emoji:"🍭",theme:"candy",from:101,to:150,open:"2027-03-20",season:"Spring",base:22,rule:"Every level starts with a sweet pattern on the board.",tip:"Welcome to Candy Kingdom! Every level starts with a pattern on the board. Plan your lines around it.",rew:{sp:150,bo:3},bg:["#ff9ad0","#c9f2ff"]},
+ {id:4,name:"Coral Reef",emoji:"🌊",theme:"ocean",from:151,to:200,open:"2027-06-20",season:"Summer",base:30,rule:"Only 4 colors, and rainbow blocks are everywhere.",tip:"Welcome to the Coral Reef! Only 4 colors here, but rainbow blocks count as any color. Go for big Pure clears!",rew:{sp:150,bo:3},bg:["#06456b","#2fd0c8"]},
+ {id:5,name:"Volcano Rush",emoji:"🌋",theme:"sunset",from:201,to:250,open:"2027-07-25",season:"Summer",base:38,rule:"Big pieces and bombs. Blow things up!",tip:"Welcome to Volcano Rush! The shapes get bigger and bombs are everywhere. A bomb in a clearing line explodes its neighbors.",rew:{sp:150,bo:3},bg:["#4a1458","#ff7a2a"]},
+ {id:6,name:"Harvest Hollow",emoji:"🎃",theme:"th_halloween",from:251,to:300,open:"2027-10-01",season:"Autumn",base:46,rule:"The master world: 7 colors and every kind of block.",tip:"Welcome to Harvest Hollow, the master world! Up to 7 colors and every kind of block at once. Good luck!",rew:{sp:150,bo:3},bg:["#2a0f3a","#e08a2a"]}];
+let WORLDS_LIVE=1,MAXLV=WORLDS[0].to;
+function worldOf(L){return WORLDS.find(W=>L>=W.from&&L<=W.to)||WORLDS[WORLDS.length-1]}
+function liveWorlds(){if(typeof TESTER!=="undefined"&&TESTER)return WORLDS.length;const t=todayStr();let n=0;for(const W of WORLDS){if(W.open<=t)n++;else break}return Math.max(1,n)}
+function refreshWorlds(){WORLDS_LIVE=liveWorlds();MAXLV=WORLDS[WORLDS_LIVE-1].to}
 function loadProg(){let p=null;try{p=JSON.parse(store("hz_prog")||"null")}catch(e){}
   if(!p){p={};const old=+store("hz_stage")||0;for(let L=1;L<old&&L<=MAXLV;L++)p[L]=[1,1,0];store("hz_prog",JSON.stringify(p))}return p}
 let PROG=loadProg();
 function saveProg(){store("hz_prog",JSON.stringify(PROG))}
 const lvStars=(L,t)=>(PROG[L]&&PROG[L][t])||0;
 function totalStars(){let n=0;for(const L in PROG)PROG[L].forEach(v=>n+=v||0);return n}
+function worldComplete(W){for(let L=W.from;L<=W.to;L++)if(lvStars(L,0)<=0)return false;return true}
+function worldDoneCheck(){let any=false;ST.wl=ST.wl||[];WORLDS.slice(0,WORLDS_LIVE).forEach(W=>{if(!ST.wl.includes(W.id)&&worldComplete(W)){ST.wl.push(W.id);saveST();store("hz_sparks",String(sparks()+W.rew.sp));for(let k=0;k<W.rew.bo;k++)addBoost(randBoost());any=true;setTimeout(()=>toast(W.emoji+" "+W.name+" complete! +"+W.rew.sp+" ✨ and "+W.rew.bo+" boosters!"),2600)}});if(any)achCheck()}
 function maxLevel(){let L=1;while(L<MAXLV&&lvStars(L,0)>0)L++;return L}
 function tierOpen(L,t){return L<=maxLevel()&&(t===0||lvStars(L,t-1)>0)}
-function levelCfg(L,t){const idx=t===0?Math.max(1,L-1):t===1?L+1:L+4,c=stageCfg(idx);c.level=L;c.tier=t;c.idx=idx;c.n=L;
+function levelCfgOld(L,t){const idx=t===0?Math.max(1,L-1):t===1?L+1:L+4,c=stageCfg(idx);c.level=L;c.tier=t;c.idx=idx;c.n=L;
   if(t===0){c.goalLines=Math.max(2,c.goalLines-1);c.goalPure=Math.max(0,c.goalPure-1);c.bias=Math.min(.95,c.bias+.12);c.stones=Math.max(0,c.stones-2);c.bombs=Math.max(0,c.bombs-1);c.ice=Math.max(0,c.ice-1)}
   if(t===2){c.goalLines=Math.min(24,c.goalLines+2);c.goalPure=Math.min(3,c.goalPure+1);c.bias=c.bias*.75;c.stones=Math.min(7,c.stones+1)}
   return c}
 // Booster rewards are small and only for FIRST clears, so players run out and may choose to buy more later
-function levelRewards(L,t,firstClear,stars,prevStars){const got=[];
+const WORLD_FX={
+ 2:(c,l)=>{c.ice=Math.min(8,2+Math.floor(l/8));c.stones=Math.min(3,c.stones);c.rainbow=Math.min(2,c.rainbow);c.bombs=Math.min(1,c.bombs);c.patt=l%3===0?"ice":0},
+ 3:(c,l)=>{c.patt="color";c.ice=Math.min(2,c.ice);c.stones=Math.min(3,c.stones);c.rainbow=Math.min(3,c.rainbow);c.bombs=Math.min(2,c.bombs)},
+ 4:(c,l)=>{c.colors=Math.min(4,c.colors);c.goalLines+=1;c.rainbow=Math.min(8,3+Math.floor(l/9));c.ice=Math.min(2,c.ice);c.stones=Math.min(3,c.stones);c.bombs=Math.min(2,c.bombs);c.patt=l%4===0?"color":0},
+ 5:(c,l)=>{c.hard=Math.min(.85,c.hard+.35);c.bombs=Math.min(7,3+Math.floor(l/12));c.stones=Math.min(5,c.stones+1);c.rainbow=Math.min(2,c.rainbow);c.ice=Math.min(2,c.ice);c.patt=l%4===2?"stone":0},
+ 6:(c,l)=>{c.colors=Math.min(7,c.colors+1);c.patt=l%2?0:"mix";c.rainbow=Math.min(4,c.rainbow+1);c.bombs=Math.min(4,c.bombs+1);c.ice=Math.min(4,c.ice+1);c.stones=Math.min(6,c.stones)}};
+function levelCfg(L,t){const W=worldOf(L);let c;
+  if(W.id===1)c=levelCfgOld(L,t);
+  else{const l=L-W.from+1,d=Math.max(2,Math.round(W.base+l*.9+(t===0?-2:t===2?3:0)));c=stageCfg(d);c.level=L;c.tier=t;c.idx=d;c.n=L;c.lw=l;WORLD_FX[W.id](c,l);
+    if(t===0){c.goalLines=Math.max(2,c.goalLines-1);c.goalPure=Math.max(0,c.goalPure-1);c.bias=Math.min(.95,c.bias+.12);c.stones=Math.max(0,c.stones-2);c.bombs=Math.max(0,c.bombs-1);c.ice=Math.max(0,c.ice-1)}
+    if(t===2){c.goalLines=Math.min(24,c.goalLines+2);c.goalPure=Math.min(3,c.goalPure+1);c.bias=c.bias*.75;c.stones=Math.min(7,c.stones+1)}}
+  c.world=W.id;if(c.lw===undefined)c.lw=L-W.from+1;
+  if(W.id===1&&L>1&&!c.stones&&!c.rainbow&&!c.bombs&&!c.ice&&!c.patt)c.seedBlocks=2+(L%2);
+  return c}
+function levelRewards(L,t,firstClear,stars,prevStars){const got=[],w=worldOf(L).id;
   if(t===0&&firstClear&&L%5===0)got.push(randBoost());
-  if(t===1&&firstClear&&L%2===0)got.push(randBoost());
-  if(t===2&&firstClear)got.push(randBoost());
-  if(t===2&&stars===3&&prevStars<3)got.push(randBoost());
+  if(t===1&&firstClear&&L%(w>1?3:2)===0)got.push(randBoost());
+  if(t===2&&firstClear&&(w===1||L%2===1))got.push(randBoost());
+  if(t===2&&stars===3&&prevStars<3&&(w===1||L%3===0))got.push(randBoost());
   return got}
 function nextTarget(L,t){return t<2?{L,t:t+1}:{L:L+1,t:0}}
 const STORE_LIVE=false; // the iPhone app build sets this to true; web and Android stay false until their billing is connected
@@ -848,7 +895,12 @@ const ACH=[
  {id:"hard3",g:"Skill",n:"Perfectionist",d:"Get 3 stars on a Hard level",r:40,f:()=>!!ST.hard3},
  {id:"lvl10",g:"Progress",n:"Explorer",d:"Reach level 10",r:20,f:()=>maxLevel()>=10},
  {id:"lvl30",g:"Progress",n:"Adventurer",d:"Reach level 30",r:60,f:()=>maxLevel()>=30},
- {id:"lvl60",g:"Progress",n:"Journey Complete",d:"Beat the last level",r:100,b:1,f:()=>maxLevel()>=MAXLV&&lvStars(MAXLV,0)>0},
+ {id:"world1",g:"Journey",n:"Meadow Explorer",d:"Finish World 1: Sunny Meadow",r:100,b:1,wk:1,f:()=>(ST.wl||[]).includes(1)},
+ {id:"world2",g:"Journey",n:"Ice Breaker",d:"Finish World 2: Frozen Peaks",r:120,b:1,wk:2,f:()=>(ST.wl||[]).includes(2)},
+ {id:"world3",g:"Journey",n:"Sweet Tooth",d:"Finish World 3: Candy Kingdom",r:120,b:1,wk:3,f:()=>(ST.wl||[]).includes(3)},
+ {id:"world4",g:"Journey",n:"Reef Ranger",d:"Finish World 4: Coral Reef",r:150,b:1,wk:4,f:()=>(ST.wl||[]).includes(4)},
+ {id:"world5",g:"Journey",n:"Lava Legend",d:"Finish World 5: Volcano Rush",r:150,b:1,wk:5,f:()=>(ST.wl||[]).includes(5)},
+ {id:"world6",g:"Journey",n:"Harvest Master",d:"Finish World 6: Harvest Hollow",r:200,b:1,wk:6,f:()=>(ST.wl||[]).includes(6)},
  {id:"stars50",g:"Progress",n:"Star Collector",d:"Collect 50 stars",r:30,f:()=>totalStars()>=50},
  {id:"stars150",g:"Progress",n:"Star Hoarder",d:"Collect 150 stars",r:70,f:()=>totalStars()>=150},
  {id:"weekly1",g:"Progress",n:"Weekly Winner",d:"Solve a Weekly Challenge",r:40,f:()=>(ST.weekly||0)>=1},
@@ -871,6 +923,7 @@ const ACH=[
  {id:"allmis",g:"Secret",n:"Mission Master",d:"Finish all 3 daily missions on 7 days",r:60,sec:1,f:()=>(ST.allm||0)>=7},
  {id:"fashion",g:"Secret",n:"Fashionista",d:"Own 3 shop items",r:30,sec:1,f:()=>owned().length>=3}];
 function recordSpend(usd){ST.spent=Math.round(((ST.spent||0)+usd)*100)/100;saveST();achCheck()}
+const ACHV=()=>ACH.filter(a=>!a.wk||a.wk<=WORLDS_LIVE);
 function earnedAch(){let o={};try{o=JSON.parse(store("hz_ach")||"{}")}catch(e){}return o}
 const achQ=[];let achBusy=false;
 function achShow(){if(achBusy||!achQ.length)return;achBusy=true;const a=achQ.shift(),b=$("achBanner");
@@ -880,22 +933,22 @@ function achCheck(){const e=earnedAch();let ch=false;
   ACH.forEach(a=>{if(e[a.id])return;let ok=false;try{ok=a.f()}catch(x){}if(!ok)return;e[a.id]=todayStr();ch=true;
     store("hz_sparks",String((+store("hz_sparks")||0)+a.r));if(a.b)addBoost(randBoost());achQ.push(a)});
   if(ch){store("hz_ach",JSON.stringify(e));achShow();try{sfx.pure()}catch(x){}}}
-function renderAch(){const e=earnedAch(),n=ACH.filter(a=>e[a.id]).length;$("achCount").textContent="🏆 "+n+" / "+ACH.length+" earned";
-  let h="",g="";ACH.forEach(a=>{if(a.g!==g){g=a.g;h+='<div class="lbl" style="margin:12px 0 4px">'+g+'</div>'}
+function renderAch(){const e=earnedAch(),n=ACHV().filter(a=>e[a.id]).length;$("achCount").textContent="🏆 "+n+" / "+ACHV().length+" earned";
+  let h="",g="";ACHV().forEach(a=>{if(a.g!==g){g=a.g;h+='<div class="lbl" style="margin:12px 0 4px">'+g+'</div>'}
     const got=!!e[a.id],hide2=a.sec&&!got;
     h+='<div style="display:flex;gap:10px;align-items:center;margin:5px 0;padding:8px 10px;border-radius:14px;background:'+(got?"rgba(255,217,106,.16)":"rgba(0,0,0,.25)")+';border:1px solid '+(got?"#ffd96a":"var(--edge)")+';opacity:'+(got?1:.75)+'"><div style="font-size:24px">'+(got?"🏆":(hide2?"❓":"🔒"))+'</div><div style="flex:1"><div style="font-weight:900;font-size:14px">'+(hide2?"Secret trophy":a.n)+'</div><div style="font-size:12px;opacity:.8">'+(hide2?"Keep playing to find it":a.d)+'</div></div><div style="font-weight:800;font-size:12px;color:#ffd96a;text-align:right">'+a.r+' ✨'+(a.b?'<br>+🎁':"")+'</div></div>'});
   $("achList").innerHTML=h}
 function renderStats(){const e=earnedAch(),n=v=>(v||0).toLocaleString();
   const rows=[["Games played",n(ST.games)],["Levels & weeklies won",n(ST.wins)],["Lines cleared",n(ST.lines)],["Pure clears",n(ST.pure)],["Pieces placed",n(ST.pieces)],["Best score in one game",n(ST.score)],["Best combo","x"+n(ST.combo)],["Clean Sweeps (empty board)",n(ST.perfect)],
-   ["Stars collected","★ "+totalStars()],["Journey level reached",maxLevel()+" / "+MAXLV],["Weekly challenges solved",n(ST.weekly)],["Daily Dashes finished",n(ST.dash)],["Best Dash streak",n(ST.bs)+" days"],["Days played",n(ST.days)],["Trophies",ACH.filter(a=>e[a.id]).length+" / "+ACH.length],["Sparks ✨",n(sparks())]];
+   ["Stars collected","★ "+totalStars()],["Journey level reached",maxLevel()+" / "+MAXLV],["Weekly challenges solved",n(ST.weekly)],["Daily Dashes finished",n(ST.dash)],["Best Dash streak",n(ST.bs)+" days"],["Days played",n(ST.days)],["Trophies",ACHV().filter(a=>e[a.id]).length+" / "+ACHV().length],["Sparks ✨",n(sparks())]];
   let bd=[];try{bd=JSON.parse(store("hz_badges")||"[]")}catch(x){}bd.slice(-6).forEach(b=>rows.push(["🏅 Badge",b.replace(/ \d{4}-\d\d-\d\d$/,"")]));
   $("statList").innerHTML=rows.map(r=>'<div style="display:flex;justify-content:space-between;gap:16px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.1);font-weight:700;font-size:14px"><span style="opacity:.8">'+r[0]+'</span><span style="color:#ffd96a;font-weight:900">'+r[1]+'</span></div>').join("")}
 $("bStats").onclick=()=>{renderStats();hide("menu");show("statScr")};
 $("bStatBack").onclick=()=>{hide("statScr");show("menu")};
 $("bAch").onclick=()=>{renderAch();hide("menu");show("achScr")};
 $("bAchBack").onclick=()=>{hide("achScr");show("menu");refreshMenu()};
-$("bAchShare").onclick=async()=>{const e=earnedAch(),name=($("nameIn").value||"").trim(),got=ACH.filter(a=>e[a.id]);
-  const t=(name?name+"'s ":"My ")+"Huezel trophies 🏆 "+got.length+"/"+ACH.length+"\n"+got.map(a=>"✅ "+a.n+" - "+a.d).join("\n")+"\nPlay: huezel.com";
+$("bAchShare").onclick=async()=>{const e=earnedAch(),name=($("nameIn").value||"").trim(),got=ACHV().filter(a=>e[a.id]);
+  const t=(name?name+"'s ":"My ")+"Huezel trophies 🏆 "+got.length+"/"+ACHV().length+"\n"+got.map(a=>"✅ "+a.n+" - "+a.d).join("\n")+"\nPlay: huezel.com";
   try{if(navigator.share){await navigator.share({text:t});return}}catch(x){}
   try{await navigator.clipboard.writeText(t);toast("Trophy list copied! Paste it anywhere.")}catch(x){prompt("Copy:",t)}};
 /* ============ daily missions: earn sparks for cosmetics ============ */
@@ -1037,7 +1090,7 @@ function startGame(mode,stage,tier,opts){
   G={mode,cfg,board:newBoard(),score:0,shown:0,best:+store(mode==="dash"?"hz_dbest_"+d:mode==="trial"?"hz_tbest_"+d:"hz_best_"+mode)||0,combo:0,bestCombo:0,pure:0,lines:0,placed:0,turn:0,pieces:[],drag:null,
      undo:null,undoUsed:false,date:d,over:false,won:false,overT:0,seedBase,lastScoreAnim:0};
   G.chal=(opts&&opts.chal)||null;G.moves=[];G.t0=0;G.running=false;
-  if(cfg.stones||cfg.rainbow||cfg.bombs||cfg.ice)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
+  if(cfg.stones||cfg.rainbow||cfg.bombs||cfg.ice||cfg.patt||cfg.seedBlocks)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
   if(cfg.design){applyDesign(G.board,cfg.design);G.pre=copyBoard(G.board)}
   G.startFill=G.board.flat().filter(v=>v!==null).length;G.mstyle=pickStyle();
   if(mode==="stage"&&cfg.level===1&&cfg.tier===0&&!store("hz_tut_done"))G.tut={step:0,hk:-1,hint:null,t:0};
@@ -1209,7 +1262,7 @@ function endGame(){
     else{sfx.over();title=e.emoji+" "+e.name+": not yet";info="Lines "+Math.min(G.lines,c.goalLines)+"/"+c.goalLines+(c.goalPure?" · Pure "+Math.min(G.pure,c.goalPure)+"/"+c.goalPure:"")+" - no room left";$("bAgain").textContent="TRY AGAIN"}}
   else{const goalTxt="Lines "+Math.min(G.lines,c.goalLines)+"/"+c.goalLines+(c.goalPure?"  ·  Pure "+Math.min(G.pure,c.goalPure)+"/"+c.goalPure:"");
     if(G.won){sfx.pure();const st=starsFor();G.stars=st;stars="★".repeat(st)+"☆".repeat(3-st);info="Solved with "+G.placed+" pieces";
-      if(m==="stage"){const L=c.level,t=c.tier,prev=lvStars(L,t);PROG[L]=PROG[L]||[0,0,0];PROG[L][t]=Math.max(prev,st);saveProg();mTick("wins",1);if(t===2&&st===3)ST.hard3=1;if(!G.boostUsed)ST.nb=(ST.nb||0)+1;
+      if(m==="stage"){const L=c.level,t=c.tier,prev=lvStars(L,t);PROG[L]=PROG[L]||[0,0,0];PROG[L][t]=Math.max(prev,st);saveProg();mTick("wins",1);worldDoneCheck();if(t===2&&st===3)ST.hard3=1;if(!G.boostUsed)ST.nb=(ST.nb||0)+1;
         got=levelRewards(L,t,prev===0,st,prev);title="Level "+L+" · "+TIERS[t].name+" cleared!";
         const nt=nextTarget(L,t);G.next=nt;const ok=nt.L<=MAXLV&&tierOpen(nt.L,nt.t);
         $("bNext").style.display=ok?"block":"none";$("bNext").textContent="NEXT: LEVEL "+nt.L+(nt.t?" "+TIERS[nt.t].name.toUpperCase():"");$("bAgain").textContent="REPLAY";
@@ -1240,7 +1293,7 @@ function shareText(){
 function refreshMenu(){const st=+store("hz_streak")||0,last=store("hz_last_daily"),t=weekStr(),att=+store("hz_att_"+t)||0;
   const dk=designKeyFor(weekStr());$("bDaily").firstChild.textContent="WEEKLY: "+DESIGNS[dk].emoji+" "+DESIGNS[dk].name.toUpperCase();
   $("dailySub").textContent=(last===t?"solved this week ✓":(att?att+" attempt"+(att>1?"s":"")+" this week":"very hard · new every Monday"))+(st?" · "+st+" wk streak":"");
-  {const ae=earnedAch();$("bAch").textContent="🏆 Trophies "+ACH.filter(a=>ae[a.id]).length+"/"+ACH.length}
+  {const ae=earnedAch();$("bAch").textContent="🏆 Trophies "+ACHV().filter(a=>ae[a.id]).length+"/"+ACHV().length}
   {const mo=MP();$("bMis").textContent="✨ Missions "+mo.c.length+"/3 today · balance "+sparks().toLocaleString()}
   {const ae2=activeEvent(),be=$("bEvent");if(ae2){be.style.display="block";be.firstChild.textContent=ae2.emoji+" "+ae2.name.toUpperCase();$("evSub").textContent="limited event · "+evDaysLeft(ae2)+" days left · new looks + challenge"}else be.style.display="none"}
   {const tb=+store("hz_tbest_"+todayStr())||0;$("trialSub").textContent=tb?"best today "+tb.toLocaleString()+" · tap to improve":"90 seconds · "+(LB_API?"weekly leaderboard":"beat your best")}
@@ -1248,12 +1301,14 @@ function refreshMenu(){const st=+store("hz_streak")||0,last=store("hz_last_daily
   $("dashSub").textContent=di.played?"done today ✓ · best "+(+store("hz_dbest_"+di.d)||0).toLocaleString()+" · tap to beat it":(di.streak&&di.missed>=1&&di.missed<=3?"you missed "+di.missed+" day"+(di.missed>1?"s":"")+"! catch up and keep your streak":(di.streak&&!di.dead?"play today to keep your streak!":"15 pieces · same for everyone · new daily"));
   const firstTime=!store("hz_tut_done")&&totalStars()===0;$("bStage").classList.toggle("pulse",firstTime);
   $("stageSub").textContent=firstTime?"tap here to start!":"level "+maxLevel()+" · "+totalStars()+" stars";
+  {const ws=+store("hz_wseen")||1;if(!firstTime&&WORLDS_LIVE>ws){$("stageSub").textContent="🌍 New world open: "+WORLDS[WORLDS_LIVE-1].name+"!";$("bStage").classList.add("pulse")}}
   $("menuStars").textContent="★ "+totalStars();$("mapStars").textContent="★ "+totalStars();
   $("menuBoost").innerHTML=BOOSTS.map(b=>b.icon+" "+(TESTER?"∞":(BO[b.k]||0))).join('<span style="opacity:.4">·</span>')}
 function goalText(c){return c.kind==="classic"?"":("Clear "+c.goalLines+" lines")}
 function tipFor(c){
   if(c.kind==="daily")return"Smash the "+DESIGNS[c.design].name.toLowerCase()+"! The picture is made of colored blocks. Fill lines to clear it, and make PURE lines to blow up touching blocks of the same color. Same puzzle for everyone, all week.";
   const ix=c.idx||c.n;
+  if(c.world>1&&c.lw===1)return WORLDS[c.world-1].tip;
   if(c.rainbow&&ix>=8&&ix<=9)return"New: RAINBOW blocks! A rainbow block counts as ANY color, so it never ruins a Pure line. Use it to finish lines!";
   if(c.ice&&ix>=18&&ix<=19)return"New: ICE blocks! A line through ice only cracks it. Clear a second line through it to break it for good. Ice stops Pure lines until it is gone.";
   if(c.bombs&&ix>=12&&ix<=13)return"New: BOMBS! When a line with a bomb clears, it explodes and breaks every block around it.";
@@ -1278,9 +1333,10 @@ function showIntro(){if(skipIntro){skipIntro=false;return}
     $("inChips").innerHTML='<span class="chip" style="cursor:default">same pieces for everyone</span> <span class="chip" style="cursor:default">no boosters</span>';
     $("inTip").textContent="Place all "+c.pieces+" shapes and score as many points as you can. Pure clears (one-color lines) and combos score the most. Plan ahead: the run ends early if nothing fits!";
     $("inStars").textContent="";$("inExtra").textContent="Finish a run each day to grow your streak. Streak rewards: 3 days, 7, 14 and 30!";show("intro");return}
-  $("inKind").textContent=c.kind==="daily"?"Weekly · "+designTitle(c.design)+" week · "+weekLabel(G.date):"Level "+c.level+" · "+TIERS[c.tier].name;
+  $("inKind").textContent=c.kind==="daily"?"Weekly · "+designTitle(c.design)+" week · "+weekLabel(G.date):"Level "+c.level+(c.world>1?" · "+WORLDS[c.world-1].name:"")+" · "+TIERS[c.tier].name;
   $("inGoal").textContent=goalText(c);
   $("inChips").innerHTML=(c.goalPure?'<span class="chip" style="cursor:default;color:#ffd96a;border-color:#ffd96a">★ '+c.goalPure+' PURE clear'+(c.goalPure>1?"s":"")+' needed</span> ':"")+
+    (c.world>1?'<span class="chip" style="cursor:default;color:#9ee8ff;border-color:#9ee8ff">'+WORLDS[c.world-1].emoji+' '+WORLDS[c.world-1].name+'</span> ':"")+(c.patt?'<span class="chip" style="cursor:default">starting pattern</span> ':"")+
     (c.stones?'<span class="chip" style="cursor:default">'+c.stones+' stones</span> ':"")+(c.rainbow?'<span class="chip" style="cursor:default">'+c.rainbow+' 🌈 rainbow</span> ':"")+(c.bombs?'<span class="chip" style="cursor:default">'+c.bombs+' 💣 bomb'+(c.bombs>1?'s':'')+'</span> ':"")+(c.ice?'<span class="chip" style="cursor:default">'+c.ice+' 🧊 ice</span> ':"")+(c.design?'<span class="chip" style="cursor:default">'+DESIGNS[c.design].emoji+' picture board</span> ':"")+'<span class="chip" style="cursor:default">'+c.colors+' color'+(c.colors>1?"s":"")+'</span>';
   $("inTip").textContent=tipFor(c);
   const pr=parFor(c);$("inStars").innerHTML="★★★ finish in "+pr+" pieces or fewer<br>★★ in "+Math.floor(pr*1.5)+" or fewer · ★ any time<br><span style=\"font-weight:600;opacity:.75;font-size:13px\">Fewer pieces = more stars. Stars earn you boosters!</span>";
@@ -1288,17 +1344,22 @@ function showIntro(){if(skipIntro){skipIntro=false;return}
   show("intro")}
 $("bGo").onclick=()=>{hide("intro");if(G&&G.cfg.kind==="trial"&&!G.running){G.t0=performance.now();G.running=true}if(G){G.idle=0;G.hint=null}if(FIRSTBOOST){FIRSTBOOST=false;toast("You got 1 of each booster! Tap them at the bottom.")}else if(NEWBOOST){NEWBOOST=false;toast("New boosters: 🌈 Rainbow and 💣 Bomb! You got 1 of each.")}};
 
-function openMap(){state="menu";hide("menu");hide("over");hide("lvl");hide("intro");show("map");refreshMenu();renderMap()}
-function renderMap(){const H=MAXLV*118+260,inner=$("mapInner"),cur=maxLevel();inner.style.height=H+"px";
-  const pts=[];for(let i=0;i<MAXLV;i++)pts.push([50+30*Math.sin(i*.85),H-140-i*118]);
+function openMap(){state="menu";hide("menu");hide("over");hide("lvl");hide("intro");show("map");refreshWorlds();store("hz_wseen",String(WORLDS_LIVE));refreshMenu();renderMap()}
+const WAMP=[30,34,26,36,30,32],WFREQ=[.85,.7,1.1,.6,.95,.8];
+function daysUntil(ds){return Math.max(1,Math.ceil((new Date(ds+"T12:00:00")-new Date())/864e5))}
+function renderMap(){refreshWorlds();const cur=maxLevel(),GAP=200,nW=WORLDS_LIVE,H=MAXLV*118+nW*GAP+620,inner=$("mapInner");inner.style.height=H+"px";
+  const yOf=L=>H-300-(L-1)*118-(worldOf(L).id-1)*GAP;
+  const pts=[];for(let L=1;L<=MAXLV;L++){const W=worldOf(L),i=L-W.from;pts.push([50+WAMP[W.id-1]*Math.sin(i*WFREQ[W.id-1]+W.id),yOf(L)])}
   let d="M"+pts[0][0].toFixed(2)+" "+pts[0][1];for(let i=1;i<pts.length;i++){const[a,b]=pts[i-1],[c,e]=pts[i];d+=" C"+a.toFixed(2)+" "+(b-55)+" "+c.toFixed(2)+" "+(e+55)+" "+c.toFixed(2)+" "+e}
-  let h='<svg width="100%" height="'+H+'" viewBox="0 0 100 '+H+'" preserveAspectRatio="none" style="position:absolute;left:0;top:0"><path d="'+d+'" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="7" stroke-linecap="round" vector-effect="non-scaling-stroke" stroke-dasharray="2 14"/></svg>';
-  h+='<div class="world" style="top:70px">MORE LEVELS COMING SOON</div>';
+  let h="";WORLDS.slice(0,nW).forEach(W=>{const top=yOf(W.to)-120,bot=yOf(W.from)+(W.id===1?260:GAP-60);h+='<div style="position:absolute;left:0;right:0;top:'+top+'px;height:'+(bot-top)+'px;background:linear-gradient(180deg,'+W.bg[1]+'55,'+W.bg[0]+'44);opacity:.55"></div>'});
+  h+='<svg width="100%" height="'+H+'" viewBox="0 0 100 '+H+'" preserveAspectRatio="none" style="position:absolute;left:0;top:0"><path d="'+d+'" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="7" stroke-linecap="round" vector-effect="non-scaling-stroke" stroke-dasharray="2 14"/></svg>';
+  if(nW<WORLDS.length){const N2=WORLDS[nW];h+='<div class="wbanner" style="top:'+(yOf(MAXLV)-250)+'px;opacity:.85"><span style="font-size:30px">'+N2.emoji+'</span> '+N2.name+'<small>🔒 Opens '+new Date(N2.open+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric"})+' · '+N2.season+' · in '+daysUntil(N2.open)+' days</small><small>'+N2.rule+'</small></div>'}
+  WORLDS.slice(0,nW).forEach(W=>{h+='<div class="wbanner" style="top:'+(yOf(W.from)+105)+'px"><span style="font-size:28px">'+W.emoji+'</span> WORLD '+W.id+' · '+W.name+'<small>'+W.rule+'</small></div>'});
   for(let i=0;i<MAXLV;i++){const L=i+1,[x,y]=pts[i];
-    if(L%10===1)h+='<div class="world" style="top:'+(y+84)+'px">WORLD '+Math.ceil(L/10)+'</div>';
     const done=lvStars(L,0)>0&&lvStars(L,1)>0&&lvStars(L,2)>0,cls=L>cur?"locked":(done?"done":"open")+(L===cur?" cur":"");
     h+='<button class="node '+cls+'" style="left:'+x.toFixed(1)+'%;top:'+y+'px" data-l="'+L+'">'+(L>cur?"🔒":L)+'<div class="pips">'+[0,1,2].map(t=>'<i class="'+"emh"[t]+(lvStars(L,t)?" on":"")+'"></i>').join("")+'</div></button>'}
-  inner.innerHTML=h;const sc=$("mapScroll");requestAnimationFrame(()=>{sc.scrollTop=Math.max(0,pts[cur-1][1]-sc.clientHeight*.6)})}
+  inner.innerHTML=h;$("mapScene").textContent="🎨 World scenery: "+(store("hz_wscene")==="0"?"off":"on");const sc=$("mapScroll");requestAnimationFrame(()=>{sc.scrollTop=Math.max(0,pts[Math.min(cur,MAXLV)-1][1]-sc.clientHeight*.6)})}
+$("mapScene").onclick=()=>{store("hz_wscene",store("hz_wscene")==="0"?"1":"0");$("mapScene").textContent="🎨 World scenery: "+(store("hz_wscene")==="0"?"off":"on")};
 $("mapInner").addEventListener("click",e=>{const b=e.target.closest(".node");if(!b)return;const L=+b.dataset.l;
   if(L>maxLevel()){toast("Clear Level "+(L-1)+" Easy to unlock this level");return}openLvl(L)});
 function openLvl(L){let h='<div class="lbl">Level '+L+'</div><div style="font-size:26px;font-weight:900;margin:4px 0 14px">Choose difficulty</div>';
@@ -1474,7 +1535,7 @@ THEMES.push({id:"aurora",name:"Aurora",price:-1,prem:"prem_aurora",usd:1.99,bg:[
  {id:"candy",name:"Candy Land",light:1,price:-1,prem:"prem_candy",usd:1.99,bg:["#ffd6f0","#c9f2ff","#fff1c9"],orbs:null,star:"255,255,255",drift:.03,big:1,panel:"70,30,80"});
 EVENTS.forEach(e=>THEMES.push({id:"th_"+e.id,name:e.tname,price:150,ev:e.id,...e.theme}));
 let BTH=store("hz_bth")||"space";
-function TH(){return THEMES.find(t=>t.id===BTH)||THEMES[0]}
+function TH(){if(G&&state==="play"&&G.cfg&&G.cfg.kind==="stage"&&G.cfg.world&&store("hz_wscene")!=="0"){const t=THEMES.find(x=>x.id===WORLDS[G.cfg.world-1].theme);if(t)return t}return THEMES.find(t=>t.id===BTH)||THEMES[0]}
 /* ===== scenic backgrounds: painted once, cached, with light animated extras ===== */
 function sk(c,w,h,st){const g=c.createLinearGradient(0,0,0,h);st.forEach(q=>g.addColorStop(q[0],q[1]));c.fillStyle=g;c.fillRect(0,0,w,h)}
 function gl(c,x,y,r,rgb,a){const g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,"rgba("+rgb+","+a+")");g.addColorStop(1,"rgba("+rgb+",0)");c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2)}
@@ -1729,8 +1790,8 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-applyQ();const BUILD="2026-10-15 b21";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
-{let taps=0,tt=0;$("verTag").style.cssText+=";padding:8px 14px;cursor:pointer";$("verTag").onclick=()=>{const n=Date.now();if(n-tt>4000)taps=0;tt=n;taps++;if(taps>=7){taps=0;TESTER=!TESTER;store("hz_tester",TESTER?"1":"0");verTxt();refreshMenu();toast(TESTER?"Tester mode ON: unlimited boosters (scores won't count for leaderboards)":"Tester mode OFF")}}}
+refreshWorlds();applyQ();const BUILD="2026-10-15 b23";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
+{let taps=0,tt=0;$("verTag").style.cssText+=";padding:8px 14px;cursor:pointer";$("verTag").onclick=()=>{const n=Date.now();if(n-tt>4000)taps=0;tt=n;taps++;if(taps>=7){taps=0;TESTER=!TESTER;store("hz_tester",TESTER?"1":"0");refreshWorlds();verTxt();refreshMenu();toast(TESTER?"Tester mode ON: unlimited boosters (scores won't count for leaderboards)":"Tester mode OFF")}}}
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});
 document.addEventListener("visibilitychange",()=>{if(document.hidden||state==="play")return;siteTag().then(t=>{if(t&&SITE_TAG&&t!==SITE_TAG){toast("New update! Reloading...");setTimeout(()=>location.reload(),900)}})});

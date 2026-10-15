@@ -242,8 +242,18 @@ const COLORS=[
  {name:"green", light:"#9affbb", base:"#1fd16a", dark:"#0a7040", glow:"31,209,106", emoji:"🟩"},
  {name:"yellow",light:"#fff39a", base:"#ffc21a", dark:"#c46d00", glow:"255,194,26", emoji:"🟨"},
  {name:"purple",light:"#e2b4ff", base:"#a64dff", dark:"#5a1fa8", glow:"166,77,255", emoji:"🟪"},
- {name:"stone", light:"#e4e8f2", base:"#8d96ac", dark:"#3f475c", glow:"150,160,185", emoji:"⬜"}
+ {name:"stone", light:"#e4e8f2", base:"#8d96ac", dark:"#3f475c", glow:"150,160,185", emoji:"⬜"},
+ {name:"orange",light:"#ffc48a", base:"#ff8a1f", dark:"#b04a00", glow:"255,138,31", emoji:"🟧"},
+ {name:"teal",  light:"#9ffff0", base:"#12d6c0", dark:"#087a75", glow:"18,214,192", emoji:"🩵"},
+ {name:"pink",  light:"#ffc0ea", base:"#ff6fc8", dark:"#a8267e", glow:"255,111,200", emoji:"🩷"},
+ {name:"rainbow",light:"#ffffff",base:"#ff8ad8", dark:"#6a3dff", glow:"255,160,230", emoji:"🌈"},
+ {name:"bomb",  light:"#ffb347", base:"#ff8a1f", dark:"#14141f", glow:"255,150,50", emoji:"💣"}
 ];
+const isWild=v=>v===9||v===10;
+let PAL=[0,1,2,3,4,6,7,8];
+function shufflePool(seed){const rg=mulberry(hash(seed)),a=[0,1,2,3,4,6,7,8];for(let i=a.length-1;i>0;i--){const j=Math.floor(rg()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function lineCol(a){for(const v of a)if(v!==null&&!isWild(v))return v;return 9}
+function isPureArr(a){const c=lineCol(a);return a.every(v=>v===c||isWild(v))}
 const BASE_SHAPES=[
  ["#"],["##"],["###"],["####"],["#####"],["##","##"],["###","###","###"],["###","###"],
  ["##","#."],["#..","#..","###"],["###",".#."],[".##","##."],["#.","#.","#.","##"],["#.","##",".#"]
@@ -287,12 +297,12 @@ function solvable(b,pcs){let budget=12000;
         const nb=copyBoard(board);s.cells.forEach(([i,j])=>nb[r+i][c+j]=1);simClear(nb);if(dfs(nb,rest))return true}}
     return false}
   return dfs(copyBoard(b),pcs)}
-function focusColor(b,nc,rng){let best=-1,col=-1;const scan=arr=>{let c=-1,k=0;for(const v of arr){if(v===null)continue;if(v===5||v>=nc)return;if(c===-1)c=v;else if(v!==c)return;k++}if(k>best&&k<N){best=k;col=c}};
+function focusColor(b,nc,rng){let best=-1,col=-1;const scan=arr=>{let c=-1,k=0;for(const v of arr){if(v===null)continue;if(isWild(v)){k++;continue}if(v===5||!PAL.slice(0,nc).includes(v))return;if(c===-1)c=v;else if(v!==c)return;k++}if(k>best&&k<N){best=k;col=c}};
   for(let r=0;r<N;r++)scan(b[r]);for(let c=0;c<N;c++){const a=[];for(let r=0;r<N;r++)a.push(b[r][c]);scan(a)}
-  return col>=0?col:Math.floor(rng()*nc)}
+  return col>=0?col:PAL[Math.floor(rng()*nc)]}
 function genSet(b,seedFn,nc=4,h=0,bias=0){for(let a=0;a<40;a++){const rng=seedFn(a);const shapes=[0,1,2].map(()=>pickShape(rng,h));
-    if(solvable(b,shapes)){const base=focusColor(b,nc,rng);return shapes.map(s=>({s,color:rng()<bias?base:Math.floor(rng()*nc)}))}}
-  const rng=seedFn(99);return[0,1,2].map(()=>({s:SHAPES[Math.floor(rng()*3)],color:Math.floor(rng()*nc)}))}
+    if(solvable(b,shapes)){const base=focusColor(b,nc,rng);return shapes.map(s=>({s,color:rng()<bias?base:PAL[Math.floor(rng()*nc)]}))}}
+  const rng=seedFn(99);return[0,1,2].map(()=>({s:SHAPES[Math.floor(rng()*3)],color:PAL[Math.floor(rng()*nc)]}))}
 /* ============ state ============ */
 const cv=$("c"),ctx=cv.getContext("2d");
 let W=0,H=0,DPR=1,VS=1,OX=0,OY=0;
@@ -416,7 +426,7 @@ const sfx={
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
 function drawSymbol(ci,cx,cy,s,col){ctx.save();ctx.fillStyle=col;ctx.translate(cx,cy);ctx.beginPath();
   if(ci===0){ctx.arc(0,0,s*.22,0,6.3)}else if(ci===1){ctx.moveTo(0,-s*.26);ctx.lineTo(s*.25,s*.2);ctx.lineTo(-s*.25,s*.2)}
-  else if(ci===2){ctx.rect(-s*.2,-s*.2,s*.4,s*.4)}else if(ci===3){ctx.moveTo(0,-s*.28);ctx.lineTo(s*.24,0);ctx.lineTo(0,s*.28);ctx.lineTo(-s*.24,0)}else{for(let k=0;k<10;k++){const a=-1.5708+k*.62832,q=k%2?s*.12:s*.28;ctx.lineTo(Math.cos(a)*q,Math.sin(a)*q)}}
+  else if(ci===2){ctx.rect(-s*.2,-s*.2,s*.4,s*.4)}else if(ci===6){ctx.rect(-s*.08,-s*.26,s*.16,s*.52);ctx.rect(-s*.26,-s*.08,s*.52,s*.16)}else if(ci===7){ctx.arc(0,0,s*.26,0,6.3);ctx.moveTo(s*.12,0);ctx.arc(0,0,s*.12,0,6.3,true)}else if(ci===8){for(let k=0;k<6;k++){const a=k*1.0472;ctx.lineTo(Math.cos(a)*s*.26,Math.sin(a)*s*.26)}}else if(ci===3){ctx.moveTo(0,-s*.28);ctx.lineTo(s*.24,0);ctx.lineTo(0,s*.28);ctx.lineTo(-s*.24,0)}else{for(let k=0;k<10;k++){const a=-1.5708+k*.62832,q=k%2?s*.12:s*.28;ctx.lineTo(Math.cos(a)*q,Math.sin(a)*q)}}
   ctx.closePath();ctx.fill();ctx.restore()}
 const PADF=.16, sprites={};
 function rrc(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
@@ -477,11 +487,26 @@ const STYLE_FN={
    c.save();rrc(c,x,y,w,w,r);c.clip();let g2=c.createRadialGradient(x+w/2,y+w*1.05,w*.05,x+w/2,y+w*1.05,w*.6);g2.addColorStop(0,"rgba(255,255,255,.6)");g2.addColorStop(1,"rgba(255,255,255,0)");c.fillStyle=g2;c.fillRect(x,y,w,w);c.restore();
    c.fillStyle="rgba(255,255,255,.65)";c.beginPath();c.ellipse(x+w*.3,y+w*.22,w*.17,w*.08,-.6,0,6.3);c.fill();
    c.lineWidth=S*.02;c.strokeStyle="rgba(255,255,255,.5)";rrc(c,x+S*.02,y+S*.02,w-S*.04,w-S*.04,r);c.stroke()}};
-function getSprite(ci){const key=BST+ci;return sprites[key]||(sprites[key]=makeSpriteStyle(ci,BST))}
+function makeSpecialSprite(ci){
+  const S=220,P=Math.round(S*PADF),T=S+2*P,k=document.createElement("canvas");k.width=k.height=T;const c=k.getContext("2d");
+  const g=S*.05,w=S-2*g,x=P+g,y=P+g,r=S*.25;
+  c.save();c.shadowColor="rgba(0,0,0,.55)";c.shadowBlur=S*.16;c.shadowOffsetY=S*.08;c.fillStyle="#222";rrc(c,x,y,w,w,r);c.fill();c.restore();
+  if(ci===9){const gr=c.createLinearGradient(x,y,x+w,y+w);["#ff3d5a","#ff9a1a","#ffe02a","#2fe07a","#2f9bff","#a64dff"].forEach((col,i)=>gr.addColorStop(i/5,col));
+    c.save();c.shadowColor="rgba(255,160,230,1)";c.shadowBlur=S*.2;c.fillStyle=gr;rrc(c,x,y,w,w,r);c.fill();c.restore();
+    c.fillStyle=gr;rrc(c,x,y,w,w,r);c.fill();c.lineWidth=S*.03;c.strokeStyle="rgba(255,255,255,.8)";rrc(c,x+S*.02,y+S*.02,w-S*.04,w-S*.04,r*.9);c.stroke();
+    const cap=c.createLinearGradient(0,y,0,y+w*.55);cap.addColorStop(0,"rgba(255,255,255,.7)");cap.addColorStop(1,"rgba(255,255,255,0)");c.save();rrc(c,x,y,w,w,r);c.clip();c.fillStyle=cap;c.fillRect(x,y,w,w*.55);c.restore();
+    c.fillStyle="#fff";c.shadowColor="rgba(0,0,0,.4)";c.shadowBlur=S*.05;c.beginPath();for(let i=0;i<8;i++){const a=-1.5708+i*.7854,q=i%2?w*.07:w*.26;c.lineTo(x+w/2+Math.cos(a)*q,y+w/2+Math.sin(a)*q)}c.closePath();c.fill()}
+  else{let gr=c.createLinearGradient(0,y,0,y+w);gr.addColorStop(0,"#5a5a78");gr.addColorStop(1,"#1a1a28");c.fillStyle=gr;rrc(c,x,y,w,w,r);c.fill();c.lineWidth=S*.03;c.strokeStyle="#ff9a3a";rrc(c,x+S*.02,y+S*.02,w-S*.04,w-S*.04,r*.9);c.stroke();
+    const bx=x+w*.46,by=y+w*.56,br=w*.28;const bg=c.createRadialGradient(bx-br*.3,by-br*.35,br*.1,bx,by,br);bg.addColorStop(0,"#8a8aa8");bg.addColorStop(.5,"#2a2a3c");bg.addColorStop(1,"#08080f");c.fillStyle=bg;c.beginPath();c.arc(bx,by,br,0,6.3);c.fill();
+    c.fillStyle="rgba(255,255,255,.7)";c.beginPath();c.ellipse(bx-br*.38,by-br*.4,br*.18,br*.1,-.6,0,6.3);c.fill();
+    c.strokeStyle="#c8a46a";c.lineWidth=S*.035;c.lineCap="round";c.beginPath();c.moveTo(bx+br*.5,by-br*.8);c.quadraticCurveTo(bx+br*.9,by-br*1.2,bx+br*1.05,by-br*1.05);c.stroke();
+    c.save();c.shadowColor="#ffb347";c.shadowBlur=S*.12;c.fillStyle="#ffe27a";c.beginPath();for(let i=0;i<8;i++){const a=i*.7854,q=i%2?w*.04:w*.11;c.lineTo(bx+br*1.05+Math.cos(a)*q,by-br*1.05+Math.sin(a)*q)}c.closePath();c.fill();c.restore()}
+  return{k,T}}
+function getSprite(ci){if(ci===9||ci===10){const key="s"+ci;return sprites[key]||(sprites[key]=makeSpecialSprite(ci))}const key=BST+ci;return sprites[key]||(sprites[key]=makeSpriteStyle(ci,BST))}
 function block(x,y,s,ci,alpha=1,glowPulse=0){
   const sp=getSprite(ci),e=s*PADF,sz=s+2*e;ctx.save();ctx.globalAlpha=alpha;ctx.drawImage(sp.k,x-e,y-e,sz,sz);
   if(glowPulse>0){ctx.globalAlpha=alpha*glowPulse*.7;ctx.fillStyle="#fff";rr(x+s*.05,y+s*.05,s*.9,s*.9,s*.24);ctx.fill()}
-  if(opt.cb&&ci<5){ctx.globalAlpha=alpha;drawSymbol(ci,x+s/2,y+s/2+s*.03,s,"rgba(255,255,255,.95)")}
+  if(opt.cb&&ci!==5&&ci<9){ctx.globalAlpha=alpha;drawSymbol(ci,x+s/2,y+s/2+s*.03,s,"rgba(255,255,255,.95)")}
   ctx.restore()}
 /* ============ effects ============ */
 function burst(x,y,ci,n,spd=1){const c=COLORS[ci];for(let i=0;i<n;i++){const a=rnd(0,6.28),v=rnd(120,620)*spd;
@@ -521,14 +546,16 @@ function designKeyFor(wk){if(SCHEDULE[wk])return SCHEDULE[wk];const n=Math.round
 function applyDesign(b,key){const d=DESIGNS[key],w=Math.max(...d.rows.map(r=>r.length)),ox=Math.floor((N-w)/2);let n=0;d.rows.forEach((row,i)=>[...row].forEach((ch,j)=>{if(DCOL[ch]!==undefined){b[i+1][j+ox]=DCOL[ch];n++}}));return n}
 function designTitle(key){const d=DESIGNS[key];return d.emoji+" "+d.name}
 function stageCfg(n){
-  return{kind:"stage",n,colors:n<=1?1:n<=4?2:n<=8?3:n<=14?4:5,stones:n<5?0:Math.min(2+Math.floor((n-5)*.4),6),
+  return{kind:"stage",n,colors:n<=1?1:n<=4?2:n<=8?3:n<=14?4:n<=30?5:6,rainbow:n<8?0:Math.min(1+Math.floor((n-8)/6),3),bombs:n<12?0:Math.min(1+Math.floor((n-12)/8),2),stones:n<5?0:Math.min(2+Math.floor((n-5)*.4),6),
     goalLines:Math.min(2+Math.floor((n-1)*.4),20),goalPure:n<2?0:Math.min(1+Math.floor((n-2)/8),2),hard:Math.min(.5,Math.max(0,(n-6)/40)),bias:Math.max(.3,.9-n*.04)}}
 function dailyCfg(d){const rg=mulberry(hash("cfg|"+d));
   return{kind:"daily",colors:5,stones:0,size:10,design:designKeyFor(d),goalLines:10+Math.floor(rg()*3),goalPure:1,hard:.7,bias:.35}}
 function prefillBoard(b,cfg,seed){const rg=mulberry(hash(seed));let n=cfg.stones,guard=0;
   const rowC=Array(N).fill(0),colC=Array(N).fill(0);
   while(n>0&&guard++<600){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]!==null||rowC[r]>=3||colC[c]>=3)continue;
-    b[r][c]=5;rowC[r]++;colC[c]++;n--}}
+    b[r][c]=5;rowC[r]++;colC[c]++;n--}
+  const sp=[];for(let i=0;i<(cfg.rainbow||0);i++)sp.push(9);for(let i=0;i<(cfg.bombs||0);i++)sp.push(10);guard=0;
+  while(sp.length&&guard++<800){const r=Math.floor(rg()*N),c=Math.floor(rg()*N);if(b[r][c]!==null||rowC[r]>=3||colC[c]>=3)continue;b[r][c]=sp.pop();rowC[r]++;colC[c]++}}
 /* ============ Journey map: levels with Easy / Medium / Hard ============ */
 const MAXLV=60,TIERS=[{k:"easy",name:"Easy",col:"#2fd27a"},{k:"medium",name:"Medium",col:"#ffc21a"},{k:"hard",name:"Hard",col:"#ff3d5a"}];
 function loadProg(){let p=null;try{p=JSON.parse(store("hz_prog")||"null")}catch(e){}
@@ -540,7 +567,7 @@ function totalStars(){let n=0;for(const L in PROG)PROG[L].forEach(v=>n+=v||0);re
 function maxLevel(){let L=1;while(L<MAXLV&&lvStars(L,0)>0)L++;return L}
 function tierOpen(L,t){return L<=maxLevel()&&(t===0||lvStars(L,t-1)>0)}
 function levelCfg(L,t){const idx=t===0?Math.max(1,L-1):t===1?L+1:L+4,c=stageCfg(idx);c.level=L;c.tier=t;c.idx=idx;c.n=L;
-  if(t===0){c.goalLines=Math.max(2,c.goalLines-1);c.goalPure=Math.max(0,c.goalPure-1);c.bias=Math.min(.95,c.bias+.12);c.stones=Math.max(0,c.stones-2)}
+  if(t===0){c.goalLines=Math.max(2,c.goalLines-1);c.goalPure=Math.max(0,c.goalPure-1);c.bias=Math.min(.95,c.bias+.12);c.stones=Math.max(0,c.stones-2);c.bombs=Math.max(0,c.bombs-1)}
   if(t===2){c.goalLines=Math.min(24,c.goalLines+2);c.goalPure=Math.min(3,c.goalPure+1);c.bias=c.bias*.75;c.stones=Math.min(7,c.stones+1)}
   return c}
 // Booster rewards are small and only for FIRST clears, so players run out and may choose to buy more later
@@ -700,11 +727,12 @@ function startGame(mode,stage,tier,opts){
   else if(mode==="dash"){cfg={kind:"dash",colors:4,stones:0,goalLines:0,goalPure:0,hard:.25,bias:.55,pieces:DASH_PIECES};seedBase="dash-"+d}
   else cfg={kind:"classic",colors:4,stones:0,goalLines:0,goalPure:0,hard:0,bias:0};
   if(opts&&opts.seed)seedBase=opts.seed;
+  PAL=cfg.kind==="daily"?[0,1,2,3,4]:(cfg.kind==="stage"&&cfg.level<=3)?[0,1,2,3,4,6,7,8]:shufflePool("pal|"+(cfg.kind==="stage"?cfg.level:seedBase));
   N=cfg.size||8;CELL=640/N;
   G={mode,cfg,board:newBoard(),score:0,shown:0,best:+store(mode==="dash"?"hz_dbest_"+d:"hz_best_"+mode)||0,combo:0,bestCombo:0,pure:0,lines:0,placed:0,turn:0,pieces:[],drag:null,
      undo:null,undoUsed:false,date:d,over:false,won:false,overT:0,seedBase,lastScoreAnim:0};
   G.chal=(opts&&opts.chal)||null;
-  if(cfg.stones)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
+  if(cfg.stones||cfg.rainbow||cfg.bombs)prefillBoard(G.board,cfg,"pre|"+seedBase.replace(/r[0-9]+$/,""));
   if(cfg.design){applyDesign(G.board,cfg.design);G.pre=copyBoard(G.board)}
   G.startFill=G.board.flat().filter(v=>v!==null).length;G.mstyle=pickStyle();
   if(mode==="stage"&&cfg.level===1&&cfg.tier===0&&!store("hz_tut_done"))G.tut={step:0,hk:-1,hint:null,t:0};
@@ -740,12 +768,12 @@ function palettePos(i,nc){return[LW/2+(i-(nc-1)/2)*92,TRAY_Y]}
 const MAXSEL=6;
 function confirmRect(){return{x:LW/2-175,y:TRAY_Y-46,w:350,h:92}}
 function targetTap(x,y){const t=G.tgt;
-  if(t.k==="paint"&&t.step===2){const nc=G.cfg.colors;for(let i=0;i<nc;i++){const[px,py]=palettePos(i,nc);if(Math.hypot(x-px,y-py)<46){applyPaint(i);return}}G.tgt=null;return}
+  if(t.k==="paint"&&t.step===2){const nc=G.cfg.colors;for(let i=0;i<nc;i++){const[px,py]=palettePos(i,nc);if(Math.hypot(x-px,y-py)<46){applyPaint(PAL[i]);return}}G.tgt=null;return}
   const cr=confirmRect();
   if(t.sel.length&&x>=cr.x&&x<=cr.x+cr.w&&y>=cr.y&&y<=cr.y+cr.h){if(t.k==="hammer"){applySmash();return}t.step=2;sfx.pick();return}
   const cell=boardCellAt(x,y);if(!cell){G.tgt=null;return}
   const[r,c]=cell,v=G.board[r][c];if(v===null)return;
-  if(t.k==="paint"&&v===5){toast("Stones can't be recolored. Try the Block Breaker!");return}
+  if(t.k==="paint"&&(v===5||v>=9)){toast("Stones, rainbows and bombs can't be recolored. Try the Block Breaker!");return}
   const i=t.sel.findIndex(q=>q[0]===r&&q[1]===c);
   if(i>=0){t.sel.splice(i,1);sfx.tick();return}
   if(t.sel.length>=MAXSEL){toast("You can choose up to "+MAXSEL+" blocks");return}
@@ -784,16 +812,21 @@ function resolve(){
   if(!nLines){G.combo=0;return}
   const lines=[];rows.forEach(r=>lines.push({cells:Array.from({length:N},(_,c)=>[r,c])}));cols.forEach(c=>lines.push({cells:Array.from({length:N},(_,r)=>[r,c])}));
   const kill=new Map(),B=G.board;let pts=0,pureN=0;
-  lines.forEach(L=>{const col=B[L.cells[0][0]][L.cells[0][1]];L.pure=L.cells.every(([r,c])=>B[r][c]===col);L.col=col;
+  lines.forEach(L=>{const vals=L.cells.map(([r,c])=>B[r][c]),col=lineCol(vals);L.pure=vals.every(v=>v===col||isWild(v));L.col=col;
     L.cells.forEach(([r,c])=>kill.set(r*N+c,{r,c,col:B[r][c],pure:L.pure}));pts+=L.pure?N*30:N*10;if(L.pure)pureN++});
+  // bombs: a bomb in a clearing line explodes the 3x3 around it
+  let bombN=0;{const bq=[...kill.values()].filter(k=>k.col===10);
+    while(bq.length){const k=bq.pop(),[bx,by]=cellXY(k.r,k.c);ring(bx+CELL/2,by+CELL/2,"#ffb347",300,.6,10);
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const nr=k.r+dr,nc=k.c+dc,key=nr*N+nc;if(nr<0||nc<0||nr>=N||nc>=N||kill.has(key)||B[nr][nc]===null)continue;
+        kill.set(key,{r:nr,c:nc,col:B[nr][nc],pure:false,bomb:true});bombN++;if(B[nr][nc]===10)bq.push({r:nr,c:nc,col:10})}}}
   // pure chain: flood fill touching same-color blocks
   let blobN=0;
   lines.filter(L=>L.pure).forEach(L=>{const q=[...L.cells],seen=new Set(L.cells.map(([r,c])=>r*N+c));
     while(q.length){const[r,c]=q.pop();[[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc,k=nr*N+nc;
-      if(nr<0||nc<0||nr>=N||nc>=N||seen.has(k))return;seen.add(k);if(B[nr][nc]===L.col){q.push([nr,nc]);if(!kill.has(k)){kill.set(k,{r:nr,c:nc,col:L.col,pure:true,blob:true});blobN++}}})}});
+      if(nr<0||nc<0||nr>=N||nc>=N||seen.has(k))return;seen.add(k);if(B[nr][nc]===L.col||isWild(B[nr][nc])){q.push([nr,nc]);if(!kill.has(k)){kill.set(k,{r:nr,c:nc,col:L.col,pure:true,blob:true});blobN++}}})}});
   G.combo++;G.bestCombo=Math.max(G.bestCombo,G.combo);
   const mult=Math.min(1+.5*(G.combo-1),4);
-  pts=(pts*(1+.5*(nLines-1))+blobN*20)*mult;pts=Math.round(pts);
+  pts=(pts*(1+.5*(nLines-1))+blobN*20+bombN*15)*mult;pts=Math.round(pts);
   G.score+=pts;G.pure+=pureN;G.lines+=nLines;
   // visuals
   let i=0,ccx=0,ccy=0;
@@ -812,6 +845,7 @@ function resolve(){
     if(blobN)floatText(LW/2,BY+370,"+"+blobN+" chain","#ffffff",40)}
   else{fx.shake=Math.max(fx.shake,.3+.12*nLines)}
   floatText(ccx,ccy,"+"+pts,"#fff",56+nLines*6);
+  if(bombN){floatText(LW/2,BY+430,"BOOM! +"+bombN+" blocks","#ffb347",50);fx.shake=Math.max(fx.shake,1);fx.flash=Math.max(fx.flash,.35);fx.flashCol="255,170,70"}
   if(G.combo>1)floatText(LW/2,BY+(pureN?220:250),"COMBO x"+mult.toFixed(1).replace(".0",""),"#ffd96a",50);
   if(nLines>1&&!pureN)floatText(LW/2,BY+300,["","","DOUBLE!","TRIPLE!","QUAD!","MEGA!"][Math.min(nLines,5)],"#9ee8ff",64);
   // board empty = perfect
@@ -873,6 +907,8 @@ function goalText(c){return c.kind==="classic"?"":("Clear "+c.goalLines+" lines"
 function tipFor(c){
   if(c.kind==="daily")return"Smash the "+DESIGNS[c.design].name.toLowerCase()+"! The picture is made of colored blocks. Fill lines to clear it, and make PURE lines to blow up touching blocks of the same color. Same puzzle for everyone, all week.";
   const ix=c.idx||c.n;
+  if(c.rainbow&&ix>=8&&ix<=9)return"New: RAINBOW blocks! A rainbow block counts as ANY color, so it never ruins a Pure line. Use it to finish lines!";
+  if(c.bombs&&ix>=12&&ix<=13)return"New: BOMBS! When a line with a bomb clears, it explodes and breaks every block around it.";
   if(ix===1)return"Drag shapes onto the grid. Fill a whole row or column to clear it. Everything is one color here, so every line is a PURE clear! Use as few pieces as you can to earn 3 stars.";
   if(ix===2)return"Now there are two colors. Fill a line with just ONE color to make a PURE clear: 3x points and it blows up touching blocks of that color!";
   if(ix<=4)return"Look for glowing lines on the board. They're all one color so far. Add matching pieces to finish a PURE line!";
@@ -890,7 +926,7 @@ function showIntro(){if(skipIntro){skipIntro=false;return}
   $("inKind").textContent=c.kind==="daily"?"Weekly · "+designTitle(c.design)+" week · "+weekLabel(G.date):"Level "+c.level+" · "+TIERS[c.tier].name;
   $("inGoal").textContent=goalText(c);
   $("inChips").innerHTML=(c.goalPure?'<span class="chip" style="cursor:default;color:#ffd96a;border-color:#ffd96a">★ '+c.goalPure+' PURE clear'+(c.goalPure>1?"s":"")+' needed</span> ':"")+
-    (c.stones?'<span class="chip" style="cursor:default">'+c.stones+' stones</span> ':"")+(c.design?'<span class="chip" style="cursor:default">'+DESIGNS[c.design].emoji+' picture board</span> ':"")+'<span class="chip" style="cursor:default">'+c.colors+' color'+(c.colors>1?"s":"")+'</span>';
+    (c.stones?'<span class="chip" style="cursor:default">'+c.stones+' stones</span> ':"")+(c.rainbow?'<span class="chip" style="cursor:default">'+c.rainbow+' 🌈 rainbow</span> ':"")+(c.bombs?'<span class="chip" style="cursor:default">'+c.bombs+' 💣 bomb'+(c.bombs>1?'s':'')+'</span> ':"")+(c.design?'<span class="chip" style="cursor:default">'+DESIGNS[c.design].emoji+' picture board</span> ':"")+'<span class="chip" style="cursor:default">'+c.colors+' color'+(c.colors>1?"s":"")+'</span>';
   $("inTip").textContent=tipFor(c);
   const pr=parFor(c);$("inStars").innerHTML="★★★ finish in "+pr+" pieces or fewer<br>★★ in "+Math.floor(pr*1.5)+" or fewer · ★ any time<br><span style=\"font-weight:600;opacity:.75;font-size:13px\">Fewer pieces = more stars. Stars earn you boosters!</span>";
   $("inExtra").textContent=c.kind==="daily"?"A new puzzle every Monday. Solve it to keep your weekly streak.":(c.goalPure?"Pure clears count toward your line total too.":"");
@@ -1076,11 +1112,12 @@ function boardPanel(){
 function previewInfo(){ // ghost + completing lines
   if(!G||!G.drag)return null;const t=dropTarget();if(!t)return null;const p=G.drag.p;
   const b=copyBoard(G.board);p.s.cells.forEach(([i,j])=>b[t.r0+i][t.c0+j]=p.color);const{rows,cols}=fullLines(b);
-  const lines=[];rows.forEach(r=>lines.push({row:true,i:r,pure:b[r].every(v=>v===b[r][0])}));
-  cols.forEach(c=>{let pure=true;for(let r=0;r<N;r++)if(b[r][c]!==b[0][c])pure=false;lines.push({row:false,i:c,pure})});
+  const lines=[];rows.forEach(r=>lines.push({row:true,i:r,pure:isPureArr(b[r])}));
+  cols.forEach(c=>{const a=[];for(let r=0;r<N;r++)a.push(b[r][c]);lines.push({row:false,i:c,pure:isPureArr(a)})});
   return{t,p,lines}}
 function lineCues(){const B=G.board,cues=[];
-  const check=(arr,isRow,i)=>{let col=-1,k=0;for(const v of arr){if(v===null)continue;if(v===5)return;if(col===-1)col=v;else if(v!==col)return;k++}
+  const check=(arr,isRow,i)=>{let col=-1,k=0;for(const v of arr){if(v===null)continue;if(v===5)return;if(isWild(v)){k++;continue}if(col===-1)col=v;else if(v!==col)return;k++}
+    if(col===-1)return;
     if(G.pre){let own=false;for(let j=0;j<N;j++){const rr_=isRow?i:j,cc_=isRow?j:i;if(B[rr_][cc_]!==null&&G.pre[rr_][cc_]!==B[rr_][cc_])own=true}if(!own)return}
     if(k>=2&&k<N)cues.push({isRow,i,col,k})};
   for(let r=0;r<N;r++)check(B[r],true,r);
@@ -1109,7 +1146,7 @@ function targetOverlay(){const t=G.tgt;if(!t)return;const pu=.5+.5*Math.sin(bgT*
   const outline=(r,c,sel)=>{const[x,y]=cellXY(r,c);ctx.save();ctx.strokeStyle=sel?"rgba(255,255,255,1)":"rgba(255,226,122,"+(.3+.4*pu)+")";ctx.lineWidth=sel?7:4;ctx.shadowColor=sel?"#fff":"#ffd96a";ctx.shadowBlur=sel?26:14;rr(x+3,y+3,CELL-6,CELL-6,18);ctx.stroke();
     if(sel){ctx.fillStyle="rgba(255,255,255,.28)";rr(x+3,y+3,CELL-6,CELL-6,18);ctx.fill()}ctx.restore()};
   const stepPick=!(t.k==="paint"&&t.step===2);
-  if(stepPick){for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=G.board[r][c];if(v===null||(t.k==="paint"&&v===5))continue;outline(r,c,isSel(r,c))}
+  if(stepPick){for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=G.board[r][c];if(v===null||(t.k==="paint"&&(v===5||v>=9)))continue;outline(r,c,isSel(r,c))}
     if(t.sel.length){const cr=confirmRect();ctx.fillStyle="rgba(10,6,40,.75)";rr(30,TRAY_Y-120,660,240,34);ctx.fill();
       const g=ctx.createLinearGradient(0,cr.y,0,cr.y+cr.h);if(t.k==="hammer"){g.addColorStop(0,"#ff8a8a");g.addColorStop(1,"#c4194a")}else{g.addColorStop(0,"#ffe27a");g.addColorStop(1,"#d17a00")}
       ctx.save();ctx.fillStyle=g;ctx.shadowColor="rgba(0,0,0,.5)";ctx.shadowBlur=18;rr(cr.x,cr.y,cr.w,cr.h,30);ctx.fill();ctx.restore();ctx.strokeStyle="rgba(255,255,255,.7)";ctx.lineWidth=3;rr(cr.x,cr.y,cr.w,cr.h,30);ctx.stroke();
@@ -1117,7 +1154,7 @@ function targetOverlay(){const t=G.tgt;if(!t)return;const pu=.5+.5*Math.sin(bgT*
       ctx.fillText(t.k==="hammer"?"SMASH "+t.sel.length+" BLOCK"+(t.sel.length>1?"S":""):"NEXT: PICK COLOR ("+t.sel.length+")",LW/2,TRAY_Y+2)}}
   else{t.sel.forEach(([r,c])=>outline(r,c,true));
     ctx.fillStyle="rgba(10,6,40,.92)";rr(30,TRAY_Y-120,660,240,34);ctx.fill();ctx.strokeStyle="rgba(255,255,255,.3)";ctx.lineWidth=2;rr(30,TRAY_Y-120,660,240,34);ctx.stroke();
-    const nc=G.cfg.colors;for(let i=0;i<nc;i++){const[px,py]=palettePos(i,nc);block(px-36,py-36,72,i,1)}
+    const nc=G.cfg.colors;for(let i=0;i<nc;i++){const[px,py]=palettePos(i,nc);block(px-36,py-36,72,PAL[i],1)}
     ctx.fillStyle="#fff";ctx.font="800 24px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("Pick the new color for "+t.sel.length+" block"+(t.sel.length>1?"s":""),LW/2,TRAY_Y-90)}}
 function tutorialDraw(){const T=G.tut;if(!T||state!=="play"||G.over)return;
   const cap=(msg,col)=>{ctx.save();ctx.font="900 30px 'Segoe UI',system-ui,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.lineWidth=7;ctx.strokeStyle="rgba(20,8,60,.9)";ctx.lineJoin="round";ctx.strokeText(msg,LW/2,BY+N*CELL+44);ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=14;ctx.fillText(msg,LW/2,BY+N*CELL+44);ctx.restore()};

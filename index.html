@@ -101,7 +101,7 @@
   </div>
   <div id="iosTip" style="display:none;max-width:320px;font-size:13px;font-weight:700;line-height:1.4;color:#ffe9a8;background:rgba(255,200,60,.12);border:1px solid rgba(255,226,122,.5);border-radius:14px;padding:8px 12px">Tip: tap Share, then Add to Home Screen, and play from the icon. Safari can erase saved progress from a web page!</div>
   <div class="row"><button class="chip" id="bAch" style="border-color:#ffd96a;color:#ffe9a8">🏆 Trophies</button><button class="chip" id="bShop" style="border-color:#7ee8ff;color:#c8f2ff">🛍 Shop</button><button class="chip" id="bMis" style="border-color:#ffd96a;color:#ffe9a8">✨ Daily missions</button></div>
-  <div class="row"><button class="chip" id="bHow">How to play</button><button class="chip" id="bSave">Save / restore progress</button></div>
+  <div class="row"><button class="chip" id="bStats">📊 Stats</button><button class="chip" id="bHow">How to play</button><button class="chip" id="bSave">Save / restore progress</button></div>
 </div>
 
 <div class="screen" id="saveScr">
@@ -177,6 +177,14 @@
     <div id="achList" style="text-align:left"></div>
     <button class="btn gold" id="bAchShare" style="width:100%;margin:10px 0 8px">SHARE MY TROPHIES</button>
     <button class="chip" id="bAchBack">Back</button>
+  </div>
+</div>
+
+<div class="screen" id="statScr">
+  <div class="panel" style="text-align:center;max-height:92vh;overflow:auto">
+    <div class="lbl">Your stats</div>
+    <div id="statList" style="text-align:left;margin:10px 0"></div>
+    <button class="chip" id="bStatBack">Back</button>
   </div>
 </div>
 
@@ -622,6 +630,12 @@ function renderAch(){const e=earnedAch(),n=ACH.filter(a=>e[a.id]).length;$("achC
     const got=!!e[a.id],hide2=a.sec&&!got;
     h+='<div style="display:flex;gap:10px;align-items:center;margin:5px 0;padding:8px 10px;border-radius:14px;background:'+(got?"rgba(255,217,106,.16)":"rgba(0,0,0,.25)")+';border:1px solid '+(got?"#ffd96a":"var(--edge)")+';opacity:'+(got?1:.75)+'"><div style="font-size:24px">'+(got?"🏆":(hide2?"❓":"🔒"))+'</div><div style="flex:1"><div style="font-weight:900;font-size:14px">'+(hide2?"Secret trophy":a.n)+'</div><div style="font-size:12px;opacity:.8">'+(hide2?"Keep playing to find it":a.d)+'</div></div><div style="font-weight:800;font-size:12px;color:#ffd96a;text-align:right">'+a.r+' ✨'+(a.b?'<br>+🎁':"")+'</div></div>'});
   $("achList").innerHTML=h}
+function renderStats(){const e=earnedAch(),n=v=>(v||0).toLocaleString();
+  const rows=[["Games played",n(ST.games)],["Levels & weeklies won",n(ST.wins)],["Lines cleared",n(ST.lines)],["Pure clears",n(ST.pure)],["Pieces placed",n(ST.pieces)],["Best score in one game",n(ST.score)],["Best combo","x"+n(ST.combo)],["Clean Sweeps (empty board)",n(ST.perfect)],
+   ["Stars collected","★ "+totalStars()],["Journey level reached",maxLevel()+" / "+MAXLV],["Weekly challenges solved",n(ST.weekly)],["Daily Dashes finished",n(ST.dash)],["Best Dash streak",n(ST.bs)+" days"],["Days played",n(ST.days)],["Trophies",ACH.filter(a=>e[a.id]).length+" / "+ACH.length],["Sparks ✨",n(sparks())]];
+  $("statList").innerHTML=rows.map(r=>'<div style="display:flex;justify-content:space-between;gap:16px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.1);font-weight:700;font-size:14px"><span style="opacity:.8">'+r[0]+'</span><span style="color:#ffd96a;font-weight:900">'+r[1]+'</span></div>').join("")}
+$("bStats").onclick=()=>{renderStats();hide("menu");show("statScr")};
+$("bStatBack").onclick=()=>{hide("statScr");show("menu")};
 $("bAch").onclick=()=>{renderAch();hide("menu");show("achScr")};
 $("bAchBack").onclick=()=>{hide("achScr");show("menu");refreshMenu()};
 $("bAchShare").onclick=async()=>{const e=earnedAch(),name=($("nameIn").value||"").trim(),got=ACH.filter(a=>e[a.id]);
@@ -823,6 +837,7 @@ function endGame(){
         if(last!==d){sk=(last===yesterdayStr())?sk+1:1;store("hz_streak",String(sk));store("hz_last_daily",d);store("hz_daily_score_"+d,String(G.score))}
         streakTxt="Weekly streak: "+sk+" week"+(sk>1?"s":"");if(first){ST.weekly=(ST.weekly||0)+1;got.push(randBoost(),randBoost());if(sk%3===0)got.push(randBoost(),randBoost(),randBoost())}}}
     else{sfx.over();title=m==="stage"?"Level "+c.level+" · "+TIERS[c.tier].name+" failed":(G.cfg.design?DESIGNS[G.cfg.design].name+" week: not solved yet":"Weekly not solved yet");info=goalTxt+" - no room left";$("bAgain").textContent="TRY AGAIN";
+      {const need=Math.max(0,c.goalLines-G.lines),needP=Math.max(0,c.goalPure-G.pure);if(need+needP>0&&need<=2&&needP<=1){title="SO CLOSE!";info="Only "+(need?need+" more line"+(need>1?"s":""):"")+(need&&needP?" and ":"")+(needP?"1 more Pure clear":"")+" to win!";$("bAgain").textContent="TRY AGAIN NOW"}}
       if(m==="stage"){const key=c.level+"-"+c.tier;startGame.retry={key,r:((startGame.retry&&startGame.retry.key===key)?startGame.retry.r:0)+1}}
       if(m==="daily"){const d=G.date;store("hz_att_"+d,String((+store("hz_att_"+d)||0)+1))}}}
   $("bMap").style.display=m==="stage"?"inline-block":"none";
@@ -831,7 +846,7 @@ function endGame(){
   $("ovTitle").textContent=title;$("ovStars").textContent=stars;$("ovInfo").textContent=info;
   $("ovScore").textContent=G.score.toLocaleString();$("ovBest").textContent="Best "+best.toLocaleString();
   $("ovPure").firstChild.textContent=G.pure;$("ovLines").firstChild.textContent=G.lines;$("ovCombo").firstChild.textContent=G.bestCombo;
-  $("ovStreak").textContent=streakTxt;saveST();achCheck();show("over");refreshMenu()}
+  $("ovStreak").textContent=streakTxt;ST.games=(ST.games||0)+1;if(G.won)ST.wins=(ST.wins||0)+1;saveST();achCheck();show("over");refreshMenu()}
 function shareText(){
   const name=($("nameIn").value||"").trim();let grid="";
   for(let r=0;r<N;r++){let line="";for(let c=0;c<N;c++){const v=G.board[r][c];line+=v===null?"⬛":COLORS[v].emoji}grid+=line+"\n"}
@@ -859,7 +874,8 @@ function tipFor(c){
   if(ix<=4)return"Look for glowing lines on the board. They're all one color so far. Add matching pieces to finish a PURE line!";
   if(c.stones&&ix<=9)return"New: gray STONES! A line with a stone can't be Pure, but it still clears. Plan your Pure lines in stone-free rows and columns.";
   return"Keep each line ONE color. Glowing lines and the star on a piece show where a Pure clear is close.";}
-function showIntro(){if(G.cfg.kind==="classic")return;const c=G.cfg;
+let skipIntro=false;
+function showIntro(){if(skipIntro){skipIntro=false;return}if(G.cfg.kind==="classic")return;const c=G.cfg;
   if(c.kind==="dash"){$("inKind").textContent="Daily Dash · "+G.date;$("inGoal").textContent=c.pieces+" pieces. Score big!";
     $("inChips").innerHTML='<span class="chip" style="cursor:default">same pieces for everyone</span> <span class="chip" style="cursor:default">no boosters</span>';
     $("inTip").textContent="Place all "+c.pieces+" shapes and score as many points as you can. Pure clears (one-color lines) and combos score the most. Plan ahead: the run ends early if nothing fits!";
@@ -960,7 +976,7 @@ $("bNext").onclick=()=>{const nt=G.next;if(nt)startGame("stage",nt.L,nt.t)};
 $("bMap").onclick=()=>openMap();
 $("mapBack").onclick=()=>{hide("map");hide("lvl");state="menu";show("menu");refreshMenu()};
 $("bDaily").onclick=()=>{store("hz_name",$("nameIn").value);startGame("daily")};
-$("bAgain").onclick=()=>G.mode==="stage"?startGame("stage",G.cfg.level,G.cfg.tier):startGame(G.mode);
+$("bAgain").onclick=()=>{if(G&&!G.won&&(G.mode==="stage"||G.mode==="daily"))skipIntro=true;return G.mode==="stage"?startGame("stage",G.cfg.level,G.cfg.tier):startGame(G.mode)};
 $("bMenu").onclick=()=>{state="menu";hide("over");show("menu");refreshMenu()};
 $("bHow").onclick=()=>{hide("menu");show("how")};$("bHowOk").onclick=()=>{hide("how");show("menu")};
 $("tMusic").onclick=()=>{opt.music=!opt.music;store("hz_music",opt.music?"1":"0");syncOpts();if(opt.music)musicStart();else musicStop()};

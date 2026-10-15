@@ -754,7 +754,8 @@ function levelRewards(L,t,firstClear,stars,prevStars){const got=[];
   if(t===2&&stars===3&&prevStars<3)got.push(randBoost());
   return got}
 function nextTarget(L,t){return t<2?{L,t:t+1}:{L:L+1,t:0}}
-const DASH_PIECES=15,CATCHUP_PRICE_ON=false,TRIAL_MS=90000;
+const STORE_LIVE=false; // the iPhone app build sets this to true; web and Android stay false until their billing is connected
+const DASH_PIECES=15,CATCHUP_PRICE_ON=STORE_LIVE,TRIAL_MS=90000;
 const noBoost=()=>G&&(G.cfg.kind==="dash"||G.cfg.kind==="trial");
 function dayDiff(a,b){const f=x=>{const q=x.split("-").map(Number);return Date.UTC(q[0],q[1]-1,q[2])};return Math.round((f(b)-f(a))/864e5)}
 function yesterdayDay(){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-1);return ymd(d)}
@@ -944,9 +945,12 @@ const PRODUCTS={
  premium_all:{n:"Premium Collection",e:"👑",usd:9.99,once:1,sub:"ALL 9 premium skins at once (save $7)",give:{own:["crystal","chrome","gold","aurora","neoncity","candy","cs_jewel","cs_retropop","synthwave"]}},
  dash_catchup:{n:"Dash streak catch-up",e:"🔥",usd:.99,sub:"Keep a missed day in your streak",give:{}}};
 const STORE_LIST=["starter","premium_all","sparks_s","sparks_m","sparks_l","sparks_xl","boost_s","boost_m","boost_l"];
-const Store={mode(){if(TESTER)return"test";try{if(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&Store.native)return"native"}catch(e){}return null},
+const Store={mode(){if(TESTER)return"test";if(Store.native&&Store.native.ready)return"native";return null},
   available(){return !!Store.mode()},native:null,
-  async buy(pid){const m=Store.mode();if(m==="test")return true;if(m==="native"&&Store.native)return await Store.native.buy(pid);return false}};
+  // returns false (cancelled), true (ok, caller delivers) or "delivered" (already delivered by the native layer)
+  async buy(pid){const m=Store.mode();if(m==="test")return true;if(m==="native")return await Store.native.buy(pid);return false},
+  price(pid){const P=PRODUCTS[pid];if(Store.mode()==="native"){const x=Store.native.priceOf(pid);if(x)return x}return"$"+P.usd.toFixed(2)},
+  has(pid){return Store.mode()!=="native"||!!Store.native.prods[pid]}};
 function storeUi(){return Store.available()}
 function purchased(){let o=[];try{o=JSON.parse(store("hz_pur")||"[]")}catch(e){}return o}
 function grantProduct(pid){const P=PRODUCTS[pid];if(!P)return;const g=P.give||{};
@@ -955,24 +959,43 @@ function grantProduct(pid){const P=PRODUCTS[pid];if(!P)return;const g=P.give||{}
   if(g.own){const o=owned();g.own.forEach(id=>{if(!o.includes(id))o.push(id)});store("hz_own",JSON.stringify(o))}
   if(P.once){const pu=purchased();if(!pu.includes(pid)){pu.push(pid);store("hz_pur",JSON.stringify(pu))}}
   if(Store.mode()!=="test")recordSpend(P.usd);else achCheck()}
+/* ---- Apple / Google billing through the native app (Capacitor plugin NativePurchases) ---- */
+const PID_PREFIX="com.huezelgames.huezel.";
+function txSeen(id){let l=[];try{l=JSON.parse(store("hz_tx")||"[]")}catch(e){}return l.includes(id)}
+function txMark(id){let l=[];try{l=JSON.parse(store("hz_tx")||"[]")}catch(e){}if(!l.includes(id)){l.push(id);store("hz_tx",JSON.stringify(l.slice(-300)))}}
+// delivers a verified store transaction exactly once
+function deliverTx(t){if(!t||!t.transactionId||!t.productIdentifier)return false;if(txSeen(String(t.transactionId)))return false;
+  const pid=String(t.productIdentifier).replace(PID_PREFIX,"");if(!PRODUCTS[pid])return false;txMark(String(t.transactionId));grantProduct(pid);return pid}
+(function(){let NP=null;try{if(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()){NP=(Capacitor.Plugins&&Capacitor.Plugins.NativePurchases)||(Capacitor.registerPlugin?Capacitor.registerPlugin("NativePurchases"):null)}}catch(e){}
+  if(!NP||!STORE_LIVE)return;
+  const N={prods:{},ready:false,
+    async init(){try{const b=await NP.isBillingSupported();if(!b||!b.isBillingSupported)return;const r=await NP.getProducts({productIdentifiers:Object.keys(PRODUCTS).map(k=>PID_PREFIX+k),productType:"inapp"});
+        (r.products||[]).forEach(p=>{N.prods[String(p.identifier).replace(PID_PREFIX,"")]=p});N.ready=Object.keys(N.prods).length>0;if(N.ready){try{NP.addListener("transactionUpdated",t=>{const d=deliverTx(t);if(d){toast("Purchase delivered: "+PRODUCTS[d].n);refreshMenu();if($("shopScr").classList.contains("show"))renderShop()}})}catch(e){}}
+        refreshMenu()}catch(e){}},
+    priceOf(pid){const p=N.prods[pid];return p&&p.priceString?p.priceString:null},
+    async buy(pid){if(!N.prods[pid])return false;let t=null;try{t=await NP.purchaseProduct({productIdentifier:PID_PREFIX+pid,productType:"inapp",quantity:1})}catch(e){return false}
+      if(!t||!t.transactionId)return false;deliverTx(t);return"delivered"},
+    async restore(){try{await NP.restorePurchases();const r=await NP.getPurchases({productType:"inapp"});let n=0;(r.purchases||[]).forEach(t=>{const pid=String(t.productIdentifier||"").replace(PID_PREFIX,"");const P=PRODUCTS[pid];if(P&&P.once&&!purchased().includes(pid)){txMark(String(t.transactionId));grantProduct(pid);n++}});return n}catch(e){return -1}}};
+  Store.native=N;N.init()})();
 let buyPid=null;
 function openBuy(pid){const P=PRODUCTS[pid];if(!P)return;if(P.once&&purchased().includes(pid)){toast("You already own this");return}
   buyPid=pid;$("buyIcon").textContent=P.e;$("buyName").textContent=P.n;$("buySub").textContent=P.sub||"";
-  $("bBuyYes").textContent=(Store.mode()==="test"?"TEST PURCHASE (no money) · ":"BUY · ")+"$"+P.usd.toFixed(2);$("buyNote").textContent=Store.mode()==="test"?"Tester mode: nothing is charged.":"Your App Store or Google Play account is charged. Purchases are final once delivered.";show("buyScr")}
+  $("bBuyYes").textContent=(Store.mode()==="test"?"TEST PURCHASE (no money) · ":"BUY · ")+Store.price(pid);$("buyNote").textContent=Store.mode()==="test"?"Tester mode: nothing is charged.":"Your App Store or Google Play account is charged. Purchases are final once delivered.";show("buyScr")}
 async function doBuy(){const pid=buyPid;if(!pid)return;hide("buyScr");let ok=false;try{ok=await Store.buy(pid)}catch(e){}
-  if(!ok){toast("Purchase cancelled");return}grantProduct(pid);try{sfx.pure()}catch(e){}toast("Thank you! "+PRODUCTS[pid].n+" delivered.");if(!$("shopScr").classList.contains("show")===false)renderShop();refreshMenu()}
+  if(!ok){toast("Purchase cancelled");return}if(ok!=="delivered")grantProduct(pid);try{sfx.pure()}catch(e){}toast("Thank you! "+PRODUCTS[pid].n+" delivered.");if(!$("shopScr").classList.contains("show")===false)renderShop();refreshMenu()}
 async function buyCatchUp(n){for(let i=0;i<n;i++){const ok=await Store.buy("dash_catchup");if(!ok)return false;if(Store.mode()!=="test")recordSpend(PRODUCTS.dash_catchup.usd)}return true}
 function renderStoreTab(el){
-  STORE_LIST.forEach(pid=>{const P=PRODUCTS[pid],done=P.once&&purchased().includes(pid);const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;margin:8px 0;padding:10px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid "+(pid==="premium_all"||pid==="starter"?"#ffd96a":"var(--edge)");
+  STORE_LIST.filter(pid=>Store.has(pid)).forEach(pid=>{const P=PRODUCTS[pid],done=P.once&&purchased().includes(pid);const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;margin:8px 0;padding:10px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid "+(pid==="premium_all"||pid==="starter"?"#ffd96a":"var(--edge)");
     const ic=document.createElement("div");ic.textContent=P.e;ic.style.cssText="font-size:28px;flex:none;width:40px;text-align:center";const nm=document.createElement("div");nm.style.cssText="flex:1;text-align:left;font-weight:800;font-size:14px;line-height:1.25";nm.innerHTML=P.n+'<div style="font-weight:600;font-size:12px;opacity:.75">'+(P.sub||"")+"</div>";
-    const b=document.createElement("button");b.className="chip";b.style.cssText="flex:none;min-width:84px;padding:8px 10px;font-weight:900";b.textContent=done?"✓ Owned":"$"+P.usd.toFixed(2);if(done)b.style.opacity=".6";else b.onclick=()=>openBuy(pid);row.append(ic,nm,b);el.appendChild(row)});
+    const b=document.createElement("button");b.className="chip";b.style.cssText="flex:none;min-width:84px;padding:8px 10px;font-weight:900";b.textContent=done?"✓ Owned":Store.price(pid);if(done)b.style.opacity=".6";else b.onclick=()=>openBuy(pid);row.append(ic,nm,b);el.appendChild(row)});
+  if(Store.mode()==="native"){const rb=document.createElement("button");rb.className="chip";rb.style.cssText="margin:8px auto 0;display:block";rb.textContent="Restore purchases";rb.onclick=async()=>{toast("Checking your purchases...");const n=await Store.native.restore();toast(n<0?"Could not reach the store. Try again later.":n?"Restored "+n+" purchase"+(n>1?"s":""):"Nothing new to restore");refreshMenu();renderShop()};el.appendChild(rb)}
   const n=document.createElement("div");n.style.cssText="font-size:11px;opacity:.65;line-height:1.4;margin:10px 4px";n.textContent=Store.mode()==="test"?"TESTER MODE: purchases here are free test purchases.":"Purchases use your App Store or Google Play account. Boosters and sparks are delivered instantly.";el.appendChild(n)}
 let shopArm=null,shopTab="styles";
 function renderShop(){$("shopSparks").textContent="✨ "+sparks()+" sparks";const el=$("shopList");el.innerHTML="";
   $("tabStyles").classList.toggle("off",shopTab!=="styles");$("tabThemes").classList.toggle("off",shopTab!=="themes");$("tabColors").classList.toggle("off",shopTab!=="colors");$("tabMusic").classList.toggle("off",shopTab!=="music");
   $("tabStore").style.display=storeUi()?"":"none";$("tabStore").classList.toggle("off",shopTab!=="store");
   if(shopTab==="store"){renderStoreTab(el);return}
-  const items=(shopTab==="styles"?STYLES:shopTab==="themes"?THEMES:shopTab==="music"?MUSIC_PACKS:COLOR_SETS).filter(it=>(!it.ev||isOwned(it.id)||evActive(it.ev))&&(!it.prem||isOwned(it.id)||storeUi())),cur=shopTab==="styles"?BST:shopTab==="themes"?BTH:shopTab==="music"?opt.mstyle:BCS;
+  const items=(shopTab==="styles"?STYLES:shopTab==="themes"?THEMES:shopTab==="music"?MUSIC_PACKS:COLOR_SETS).filter(it=>(!it.ev||isOwned(it.id)||evActive(it.ev))&&(!it.prem||isOwned(it.id)||(storeUi()&&Store.has(it.prem)))),cur=shopTab==="styles"?BST:shopTab==="themes"?BTH:shopTab==="music"?opt.mstyle:BCS;
   items.forEach(it=>{const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid "+(cur===it.id?"#ffd96a":"var(--edge)");
     const cv2=document.createElement("canvas");cv2.width=240;cv2.height=60;cv2.style.cssText="position:static;left:auto;right:auto;top:auto;bottom:auto;width:120px;height:30px;flex:none;touch-action:auto;border-radius:8px";const c2=cv2.getContext("2d");
     if(shopTab==="styles"){for(let i=0;i<4;i++){const sp=makeSpriteStyle(i,it.id),sz=44,e=sz*PADF,t=sz+2*e;c2.drawImage(sp.k,8+i*58-e,8-e,t,t)}}
@@ -981,7 +1004,7 @@ function renderShop(){$("shopSparks").textContent="✨ "+sparks()+" sparks";cons
     else{const tc=document.createElement("canvas");tc.width=240;tc.height=427;(SCENES[it.id]||SCENES.space)(tc.getContext("2d"),240,427,mulberry(hash("scene"+it.id)));c2.drawImage(tc,0,Math.round(427*.56),240,60,0,0,240,60)}
     const nm=document.createElement("div");nm.style.cssText="flex:1;text-align:left;font-weight:800;font-size:14px";nm.textContent=(it.prem?"💎 ":"")+it.name+(it.ev&&!isOwned(it.id)?" ⏳ "+evDaysLeft(evById(it.ev))+"d":"");
     const b=document.createElement("button");b.className="chip";b.style.cssText="flex:none;min-width:92px;padding:8px 10px";
-    const own=isOwned(it.id)||it.price===0;b.textContent=cur===it.id?"✓ Equipped":own?"Equip":it.prem?"$"+it.usd.toFixed(2):(shopArm===it.id?"Tap to buy":"✨ "+it.price);
+    const own=isOwned(it.id)||it.price===0;b.textContent=cur===it.id?"✓ Equipped":own?"Equip":it.prem?Store.price(it.prem):(shopArm===it.id?"Tap to buy":"✨ "+it.price);
     if(!own&&!it.prem&&sparks()<it.price)b.style.opacity=".5";
     const equip=()=>{if(shopTab==="styles"){BST=it.id;store("hz_bstyle",BST)}else if(shopTab==="themes"){BTH=it.id;store("hz_bth",BTH)}else if(shopTab==="music"){opt.mstyle=it.id;store("hz_mstyle",it.id);syncOpts()}else{BCS=it.id;store("hz_bcs",BCS);applyColorSet(BCS)}};
     b.onclick=()=>{if(own){equip();shopArm=null;renderShop();return}
@@ -1706,7 +1729,7 @@ function hud(){
 function circBtn(x,y,t,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createLinearGradient(0,y-36,0,y+36);g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(1,"rgba(255,255,255,.07)");
   ctx.fillStyle=g;ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,38,0,6.3);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";ctx.font="800 36px 'Segoe UI',system-ui,sans-serif";ctx.fillText(t,x,y+2);ctx.restore()}
-applyQ();const BUILD="2026-10-15 b20";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
+applyQ();const BUILD="2026-10-15 b21";const verTxt=()=>{$("verTag").textContent="Huezel build "+BUILD+(TESTER?" · TESTER MODE (unlimited boosters)":"")};verTxt();
 {let taps=0,tt=0;$("verTag").style.cssText+=";padding:8px 14px;cursor:pointer";$("verTag").onclick=()=>{const n=Date.now();if(n-tt>4000)taps=0;tt=n;taps++;if(taps>=7){taps=0;TESTER=!TESTER;store("hz_tester",TESTER?"1":"0");verTxt();refreshMenu();toast(TESTER?"Tester mode ON: unlimited boosters (scores won't count for leaderboards)":"Tester mode OFF")}}}
 let SITE_TAG=null;function siteTag(){return fetch(location.pathname,{cache:"no-cache",method:"HEAD"}).then(r=>(r.headers.get("etag")||"")+(r.headers.get("last-modified")||"")).catch(()=>null)}
 siteTag().then(t=>{SITE_TAG=t});

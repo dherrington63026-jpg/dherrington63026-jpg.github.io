@@ -96,7 +96,7 @@
     <button class="chip off" id="tCB">Color-blind symbols: off</button>
   </div>
   <div id="iosTip" style="display:none;max-width:320px;font-size:13px;font-weight:700;line-height:1.4;color:#ffe9a8;background:rgba(255,200,60,.12);border:1px solid rgba(255,226,122,.5);border-radius:14px;padding:8px 12px">Tip: tap Share, then Add to Home Screen, and play from the icon. Safari can erase saved progress from a web page!</div>
-  <div class="row"><button class="chip" id="bMis" style="border-color:#ffd96a;color:#ffe9a8">✨ Daily missions</button></div>
+  <div class="row"><button class="chip" id="bShop" style="border-color:#7ee8ff;color:#c8f2ff">🛍 Shop</button><button class="chip" id="bMis" style="border-color:#ffd96a;color:#ffe9a8">✨ Daily missions</button></div>
   <div class="row"><button class="chip" id="bHow">How to play</button><button class="chip" id="bSave">Save / restore progress</button></div>
 </div>
 
@@ -152,6 +152,16 @@
     <div id="misList" style="text-align:left"></div>
     <div style="font-size:12px;opacity:.7;line-height:1.4;margin:10px 0 12px">Each mission = 10 ✨ sparks. Finish all 3 for +20 bonus. Sparks will buy block styles, board themes and music packs soon. New missions every day!</div>
     <button class="chip" id="bMisBack">Back</button>
+  </div>
+</div>
+
+<div class="screen" id="shopScr">
+  <div class="panel" style="text-align:center;max-height:90vh;overflow:auto">
+    <div class="lbl">Shop · block styles</div>
+    <div style="font-size:18px;font-weight:900;color:#ffd96a;margin:6px 0 4px" id="shopSparks"></div>
+    <div style="font-size:12px;opacity:.7;margin-bottom:8px">Earn ✨ sparks from daily missions. Board themes and music packs are coming next!</div>
+    <div id="shopList"></div>
+    <button class="chip" id="bShopBack" style="margin-top:8px">Back</button>
   </div>
 </div>
 
@@ -416,7 +426,34 @@ function makeSprite(ci){
   c.fillStyle="rgba(255,255,255,.98)";c.beginPath();c.ellipse(fx+fw*.24,fy+fh*.2,fw*.085,fh*.045,-.55,0,6.3);c.fill();
   c.beginPath();c.arc(fx+fw*.4,fy+fh*.13,fw*.025,0,6.3);c.fill();
   return{k,T}}
-function getSprite(ci){return sprites[ci]||(sprites[ci]=makeSprite(ci))}
+let BST=store("hz_bstyle")||"gem";
+function makeSpriteStyle(ci,st){
+  if(st==="gem"||!STYLE_FN[st])return makeSprite(ci);
+  const S=220,P=Math.round(S*PADF),T=S+2*P,k=document.createElement("canvas");k.width=k.height=T;const c=k.getContext("2d"),col=COLORS[ci];
+  const g=S*.05,w=S-2*g,x=P+g,y=P+g;
+  c.save();c.shadowColor="rgba(0,0,0,.5)";c.shadowBlur=S*.14;c.shadowOffsetY=S*.07;c.fillStyle=col.dark;rrc(c,x,y,w,w,S*.22);c.fill();c.restore();
+  STYLE_FN[st](c,col,S,x,y,w);return{k,T}}
+const STYLE_FN={
+ candy(c,col,S,x,y,w){const r=w*.34;let gr=c.createLinearGradient(0,y,0,y+w);gr.addColorStop(0,col.light);gr.addColorStop(1,col.base);c.fillStyle=gr;rrc(c,x,y,w,w,r);c.fill();
+   c.lineWidth=S*.055;c.strokeStyle="rgba(255,255,255,.85)";rrc(c,x+S*.04,y+S*.04,w-S*.08,w-S*.08,r*.85);c.stroke();
+   c.fillStyle="rgba(255,255,255,.75)";c.beginPath();c.ellipse(x+w*.34,y+w*.27,w*.2,w*.1,-.5,0,6.3);c.fill();c.beginPath();c.arc(x+w*.67,y+w*.2,w*.04,0,6.3);c.fill();
+   c.lineWidth=S*.012;c.strokeStyle=col.dark;rrc(c,x,y,w,w,r);c.stroke()},
+ neon(c,col,S,x,y,w){const r=w*.2;c.fillStyle="rgba(12,8,40,.96)";rrc(c,x,y,w,w,r);c.fill();
+   let gr=c.createRadialGradient(x+w/2,y+w/2,w*.05,x+w/2,y+w/2,w*.6);gr.addColorStop(0,col.base+"88");gr.addColorStop(1,"rgba(0,0,0,0)");c.fillStyle=gr;rrc(c,x,y,w,w,r);c.fill();
+   c.save();c.shadowColor=col.light;c.shadowBlur=S*.16;c.lineWidth=S*.07;c.strokeStyle=col.light;rrc(c,x+S*.05,y+S*.05,w-S*.1,w-S*.1,r*.8);c.stroke();c.restore();
+   c.lineWidth=S*.025;c.strokeStyle="#fff";rrc(c,x+S*.05,y+S*.05,w-S*.1,w-S*.1,r*.8);c.stroke();
+   c.fillStyle=col.light;rrc(c,x+w*.32,y+w*.32,w*.36,w*.36,w*.06);c.fill()},
+ pixel(c,col,S,x,y,w){const b=w*.12;c.fillStyle=col.base;c.fillRect(x,y,w,w);
+   c.fillStyle=col.light;c.fillRect(x,y,w,b);c.fillRect(x,y,b,w);c.fillStyle=col.dark;c.fillRect(x,y+w-b,w,b);c.fillRect(x+w-b,y,b,w);
+   c.fillStyle="rgba(255,255,255,.7)";const u=w*.1;c.fillRect(x+b*1.6,y+b*1.6,u*1.6,u);c.fillRect(x+b*1.6,y+b*1.6+u,u,u*1.2);
+   c.fillStyle=col.dark;c.fillRect(x+b,y+w-b*2,w-b*2,b*.5);
+   c.lineWidth=S*.02;c.strokeStyle="rgba(0,0,0,.55)";c.strokeRect(x,y,w,w)},
+ jelly(c,col,S,x,y,w){const r=w*.38;let gr=c.createRadialGradient(x+w*.4,y+w*.35,w*.05,x+w/2,y+w/2,w*.7);gr.addColorStop(0,col.light);gr.addColorStop(.55,col.base);gr.addColorStop(1,col.dark);
+   c.globalAlpha=.92;c.fillStyle=gr;rrc(c,x,y,w,w,r);c.fill();c.globalAlpha=1;
+   c.save();rrc(c,x,y,w,w,r);c.clip();let g2=c.createRadialGradient(x+w/2,y+w*1.05,w*.05,x+w/2,y+w*1.05,w*.6);g2.addColorStop(0,"rgba(255,255,255,.6)");g2.addColorStop(1,"rgba(255,255,255,0)");c.fillStyle=g2;c.fillRect(x,y,w,w);c.restore();
+   c.fillStyle="rgba(255,255,255,.65)";c.beginPath();c.ellipse(x+w*.3,y+w*.22,w*.17,w*.08,-.6,0,6.3);c.fill();
+   c.lineWidth=S*.02;c.strokeStyle="rgba(255,255,255,.5)";rrc(c,x+S*.02,y+S*.02,w-S*.04,w-S*.04,r);c.stroke()}};
+function getSprite(ci){const key=BST+ci;return sprites[key]||(sprites[key]=makeSpriteStyle(ci,BST))}
 function block(x,y,s,ci,alpha=1,glowPulse=0){
   const sp=getSprite(ci),e=s*PADF,sz=s+2*e;ctx.save();ctx.globalAlpha=alpha;ctx.drawImage(sp.k,x-e,y-e,sz,sz);
   if(glowPulse>0){ctx.globalAlpha=alpha*glowPulse*.7;ctx.fillStyle="#fff";rr(x+s*.05,y+s*.05,s*.9,s*.9,s*.24);ctx.fill()}
@@ -535,6 +572,25 @@ function mCheck(o){const ms=missionsFor(o.d);let add=0;
 function renderMis(){const o=MP(),ms=missionsFor(o.d);$("misSparks").textContent="✨ "+sparks()+" sparks · "+o.c.length+"/3 done today";
   $("misList").innerHTML=ms.map((m,i)=>{const v=Math.min(o[m.k]||0,m.goal),done=o.c.includes(i);
     return '<div style="margin:8px 0;font-weight:800;font-size:15px">'+(done?"✅ ":"⬜ ")+m.t+'<div style="height:10px;border-radius:6px;background:rgba(0,0,0,.35);margin-top:5px;overflow:hidden"><div style="height:100%;width:'+(100*v/m.goal)+'%;background:linear-gradient(90deg,#ff6a88,#ffc21a)"></div></div><div style="font-size:12px;opacity:.7;margin-top:2px">'+v+' / '+m.goal+'</div></div>'}).join("")}
+const STYLES=[{id:"gem",name:"Glossy Gem",price:0},{id:"candy",name:"Candy",price:100},{id:"neon",name:"Neon",price:150},{id:"pixel",name:"Pixel",price:200},{id:"jelly",name:"Jelly",price:300}];
+function owned(){let o=[];try{o=JSON.parse(store("hz_own")||"[]")}catch(e){}return o}
+function isOwned(id){return id==="gem"||owned().includes(id)}
+let shopArm=null;
+function renderShop(){$("shopSparks").textContent="✨ "+sparks()+" sparks";const el=$("shopList");el.innerHTML="";
+  STYLES.forEach(it=>{const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid "+(BST===it.id?"#ffd96a":"var(--edge)");
+    const cv2=document.createElement("canvas");cv2.width=240;cv2.height=60;cv2.style.cssText="position:static;left:auto;right:auto;top:auto;bottom:auto;width:120px;height:30px;flex:none;touch-action:auto";const c2=cv2.getContext("2d");
+    for(let i=0;i<4;i++){const sp=makeSpriteStyle(i,it.id),sz=44,e=sz*PADF,t=sz+2*e;c2.drawImage(sp.k,8+i*58-e,8-e,t,t)}
+    const nm=document.createElement("div");nm.style.cssText="flex:1;text-align:left;font-weight:800;font-size:14px";nm.textContent=it.name;
+    const b=document.createElement("button");b.className="chip";b.style.cssText="flex:none;min-width:92px;padding:8px 10px";
+    const own=isOwned(it.id);b.textContent=BST===it.id?"✓ Equipped":own?"Equip":(shopArm===it.id?"Tap to buy":"✨ "+it.price);
+    if(!own&&sparks()<it.price)b.style.opacity=".5";
+    b.onclick=()=>{if(own){BST=it.id;store("hz_bstyle",BST);shopArm=null;renderShop();return}
+      if(sparks()<it.price){toast("You need "+(it.price-sparks())+" more ✨ sparks. Finish daily missions!");return}
+      if(shopArm!==it.id){shopArm=it.id;renderShop();return}
+      store("hz_sparks",String(sparks()-it.price));const o=owned();o.push(it.id);store("hz_own",JSON.stringify(o));BST=it.id;store("hz_bstyle",BST);shopArm=null;toast("Unlocked "+it.name+"!");sfx.pure();renderShop()};
+    row.append(cv2,nm,b);el.appendChild(row)})}
+$("bShop").onclick=()=>{shopArm=null;renderShop();hide("menu");show("shopScr")};
+$("bShopBack").onclick=()=>{hide("shopScr");show("menu");refreshMenu()};
 $("bMis").onclick=()=>{renderMis();hide("menu");show("misScr")};
 $("bMisBack").onclick=()=>{hide("misScr");show("menu");refreshMenu()};
 function startGame(mode,stage,tier){
